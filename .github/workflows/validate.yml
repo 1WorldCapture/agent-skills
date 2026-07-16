@@ -1,0 +1,40 @@
+name: Validate Skills
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm run validate
+      - run: npm test
+      - name: Verify npx skills discovery and install
+        if: matrix.node-version == 22
+        env:
+          DISABLE_TELEMETRY: "1"
+        run: |
+          npx -y skills add "$GITHUB_WORKSPACE" --list
+          project="$(mktemp -d)"
+          cd "$project"
+          git init -q
+          npx -y skills add "$GITHUB_WORKSPACE" \
+            --skill setup-heroui-pro \
+            --agent codex \
+            --agent cursor \
+            --agent claude-code \
+            --yes
+          test -f .agents/skills/setup-heroui-pro/SKILL.md
+          test -f .claude/skills/setup-heroui-pro/SKILL.md
