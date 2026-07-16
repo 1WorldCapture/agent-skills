@@ -6,11 +6,11 @@ Use one flow only. The commands are based on the CollectUI HeroUI Pro documentat
 
 1. Inspect the target and lockfile.
 2. Create or clone the base scaffold.
-3. Install dependencies and prove the base app runs.
-4. Create a git checkpoint.
-5. Run `node .agent/bin/hpsetup.mjs --dry-run` and then `--auto`.
+3. Install dependencies and prove the credential-free base app runs before adding any Pro import.
+4. Confirm the selected lockfile is tracked and create a Git checkpoint when identity/work-tree conditions allow it.
+5. Run `node .agent/bin/hpsetup.mjs --channel stable --dry-run` and then `--auto`.
 6. Configure styles and one representative component.
-7. Run lint, typecheck, build, and a targeted preview.
+7. Run the read-only `verify-app.mjs` protocol.
 
 Do not use `--no-cache` during normal setup. It bypasses source and CDN caches and is rate-limited.
 
@@ -18,23 +18,31 @@ Do not use `--no-cache` during normal setup. It bypasses source and CDN caches a
 
 ### Fast template
 
-Use the documented Next.js template when the user wants the shortest non-interactive path:
+Use the bundled orchestrator when the user wants the shortest non-interactive path:
 
 ```bash
-npx -y degit rhywonfeong/hp-nextjs-app-template <project-name>
-cd <project-name>
-pnpm install
+node "$SKILL_DIR/scripts/setup.mjs" \
+  --root "$PROJECT_ROOT" \
+  --topology web \
+  --scaffold fast \
+  --channel stable
 ```
+
+The fast flow uses the current stable `create-next-app`, the official Next.js flat ESLint config, a read-only `lint`, separate `lint:fix`, `tsc --noEmit`, and a minimal non-watch Vitest test. It does not import or depend on the authenticated Pro payload during baseline validation. The repository's scheduled CI exercises this baseline on Node.js 20 and 22 with the current stable pnpm and public HeroUI packages.
 
 ### Custom scaffold
 
 Use the HeroUI generator when the user needs generator choices:
 
 ```bash
-npx -y heroui-cli@latest init <project-name>
+version="$(npm view heroui-cli dist-tags.latest)"
+case "$version" in *-*) echo "heroui-cli latest is prerelease: $version"; exit 1;; esac
+npx -y "heroui-cli@$version" init <project-name>
 ```
 
 Prefer Next.js App Router for new Next.js applications. The Pages Router option exists for older projects.
+
+For any stable flow, resolve npm `latest` tags before installation and stop if the resolved version contains a prerelease suffix. Use `--channel beta` only after explicit user approval.
 
 ### Global CSS
 
@@ -150,3 +158,5 @@ Apply the Web and Native CSS blocks independently.
 Do not scaffold. Verify that the project uses Tailwind CSS v4 on Web and a supported Expo/Uniwind setup on Native. Add only the missing Pro dependencies, style imports, and Agent configuration.
 
 Before mutation, run the existing build and record failures. Do not attribute pre-existing failures to HeroUI Pro.
+
+Existing projects must expose read-only `lint`, `typecheck`, `test`, `build`, and `start` or `preview` scripts before final verification. Do not silently rewrite an existing application's scripts; report the mismatch and make a reviewed project change.

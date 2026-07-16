@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 6 * * 1"
 
 permissions:
   contents: read
@@ -38,3 +41,53 @@ jobs:
             --yes
           test -f .agents/skills/setup-heroui-pro/SKILL.md
           test -f .claude/skills/setup-heroui-pro/SKILL.md
+
+  fast-web-template:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Activate current stable pnpm
+        run: |
+          version="$(npm view pnpm dist-tags.latest)"
+          case "$version" in *-*) echo "pnpm latest is prerelease: $version"; exit 1;; esac
+          corepack enable
+          corepack prepare "pnpm@$version" --activate
+      - name: Resolve stable package tags
+        run: |
+          node --input-type=module <<'NODE'
+          import {execFileSync} from "node:child_process";
+          for (const name of ["create-next-app", "@heroui/react", "@heroui/styles"]) {
+            const version = execFileSync("npm", ["view", name, "dist-tags.latest"], {encoding: "utf8"}).trim();
+            if (version.includes("-")) throw new Error(`${name}@latest is prerelease: ${version}`);
+            console.log(`${name}=${version}`);
+          }
+          NODE
+      - name: Build clean fast Web baseline
+        run: |
+          cna="$(npm view create-next-app dist-tags.latest)"
+          heroui_react="$(npm view @heroui/react dist-tags.latest)"
+          heroui_styles="$(npm view @heroui/styles dist-tags.latest)"
+          pnpm dlx "create-next-app@$cna" app --ts --tailwind --eslint --app --src-dir --import-alias '@/*' --use-pnpm --yes
+          cd app
+          pnpm add "@heroui/react@$heroui_react" "@heroui/styles@$heroui_styles"
+          pnpm add -D vitest
+          node --input-type=module <<'NODE'
+          import {readFileSync, writeFileSync, mkdirSync} from "node:fs";
+          const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+          pkg.scripts = {...pkg.scripts, lint: "eslint .", "lint:fix": "eslint . --fix", typecheck: "tsc --noEmit", test: "vitest run"};
+          writeFileSync("package.json", `${JSON.stringify(pkg, null, 2)}\n`);
+          mkdirSync("src/__tests__", {recursive: true});
+          writeFileSync("src/__tests__/baseline.test.ts", 'import {expect, test} from "vitest";\ntest("baseline", () => expect(true).toBe(true));\n');
+          NODE
+          pnpm install --lockfile-only
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+          pnpm build

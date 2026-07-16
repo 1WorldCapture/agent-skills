@@ -81,7 +81,7 @@ Verify both style imports and both `@source` directives. Resolve `@source` relat
 1. Confirm `node_modules/.bin/hpmcp` exists at the project root.
 2. Confirm `HEROUI_PERSONAL_TOKEN` is exported or present in `.agent/.env.local`.
 3. Run `node .agent/bin/hpmcp.mjs react` or `native` directly and inspect the error.
-4. Use the client's diagnostics: `grok mcp doctor`, `codex mcp list`, `claude mcp list`, or `cursor-agent mcp list`.
+4. Run `verify-agent-runtime.mjs --root .` so client diagnostics are captured and redacted. Never print `claude mcp list` or another raw MCP listing directly.
 5. Increase startup timeout only after confirming package download/startup is the cause.
 
 ## Skills are not discovered
@@ -94,3 +94,17 @@ node .agent/skills/setup-heroui-pro/scripts/verify-project.mjs --root .
 ```
 
 Then restart/reopen the Agent if its top-level skill directory was created after the session started. Trust the repository where required.
+
+## Credentials show as exported but are empty
+
+Run:
+
+```bash
+node .agent/skills/setup-heroui-pro/scripts/check-credentials.mjs --root .
+```
+
+Both lines must report `available`. Set missing values outside chat and rerun the same resumable setup command.
+
+## Stable resolves to a prerelease
+
+Do not continue by silently accepting the version. Inspect the npm dist-tags, wait for or select a stable release, or ask the user to explicitly choose `--channel beta`.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Setup HeroUI Pro"
-  short_description: "Scaffold HeroUI Pro and project-local agents"
-  default_prompt: "Use $setup-heroui-pro to scaffold this project and configure project-local HeroUI Pro MCP and skills."
+  short_description: "Resumable, project-local HeroUI Pro setup"
+  default_prompt: "Use $setup-heroui-pro to configure and verify a resumable project-local HeroUI Pro setup."

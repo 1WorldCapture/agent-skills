@@ -8,7 +8,7 @@ This repository never distributes HeroUI Pro source code, credentials, or licens
 
 | Skill | Purpose |
 | --- | --- |
-| `setup-heroui-pro` | Scaffold or upgrade HeroUI Pro Web, Native, and monorepo projects, then configure project-local MCP and Skills for Codex, Cursor, Claude Code, and Grok. |
+| `setup-heroui-pro` | Scaffold or upgrade HeroUI Pro Web, Native, and monorepo projects through a resumable workflow with credential preflight, stable/beta enforcement, atomic project-local Skill downloads, and redacted MCP verification. |
 
 ## Install
 
@@ -56,6 +56,19 @@ The Skill runs two phases:
 
 1. Scaffold or upgrade a Web, Native, Web monorepo, or Web+Native monorepo and install HeroUI Pro through `hpsetup`.
 2. Configure project-local `hpmcp`, HeroUI Agent Skills, credentials, and MCP files for the selected Agents.
+
+For a new setup, prefer the resumable orchestrator exposed by the installed Skill:
+
+```bash
+node .agents/skills/setup-heroui-pro/scripts/setup.mjs \
+  --root . \
+  --topology web \
+  --scaffold fast \
+  --agents grok,codex,claude,cursor \
+  --channel stable
+```
+
+It stops safely when either credential is empty and resumes from `.agent/setup-state.json` after credentials are set outside chat. Use `check-credentials.mjs` to see only `available`/`empty` status, never values.
 
 The setup Skill itself remains managed by `npx skills`. Downloaded HeroUI vendor Skills and a reviewable mirror of the setup Skill live under the target project's `.agent/` directory.
 
@@ -116,4 +129,4 @@ Each directory under `skills/` must be self-contained. Runtime scripts and refer
 
 ## Release
 
-Use repository-level semantic versions. The initial release is intended to be `v0.1.0`. Validate local discovery and installation before creating a GitHub release.
+Use repository-level semantic versions. Validate local discovery, installation, credential gating, and safe runtime verification before creating a GitHub release.

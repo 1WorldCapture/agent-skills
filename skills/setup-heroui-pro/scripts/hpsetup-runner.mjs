@@ -1,42 +1,44 @@
 #!/usr/bin/env node
 
-import {existsSync, readFileSync} from "node:fs";
 import {spawnSync} from "node:child_process";
 import {dirname, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
+import {credentialsFor} from "./_shared.mjs";
+import {resolveNpmChannelVersion} from "./_npm-channel.mjs";
 
-function readEnvFile(file) {
-  if (!existsSync(file)) return {};
-  const values = {};
-  for (const rawLine of readFileSync(file, "utf8").split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const separator = line.indexOf("=");
-    if (separator < 1) continue;
-    const key = line.slice(0, separator).trim();
-    let value = line.slice(separator + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    values[key] = value;
+function parseArgs(argv) {
+  const forwarded = [];
+  let channel = "stable";
+  for (let index = 0; index < argv.length; index += 1) {
+    if (argv[index] === "--channel") channel = argv[++index];
+    else forwarded.push(argv[index]);
   }
-  return values;
+  return {channel, forwarded};
 }
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(scriptDir, "../..");
-const fileEnv = readEnvFile(resolve(projectRoot, ".agent/.env.local"));
-const key = process.env.HEROUI_KEY || fileEnv.HEROUI_KEY;
+const {channel, forwarded} = parseArgs(process.argv.slice(2));
+const credentials = credentialsFor(projectRoot);
+const key = credentials.HEROUI_KEY;
 
-if (!key) {
-  console.error("HEROUI_KEY is missing. Export it or add it to .agent/.env.local (gitignored).");
+if (!String(key).trim() || !String(credentials.HEROUI_PERSONAL_TOKEN).trim()) {
+  console.error("Both HEROUI_KEY and HEROUI_PERSONAL_TOKEN must be non-empty. Run check-credentials.mjs after setting them outside chat.");
+  process.exit(1);
+}
+
+let version;
+try {
+  version = resolveNpmChannelVersion("hpsetup", channel);
+} catch (error) {
+  console.error(error.message);
   process.exit(1);
 }
 
 const npx = process.platform === "win32" ? "npx.cmd" : "npx";
-const child = spawnSync(npx, ["-y", "hpsetup@latest", ...process.argv.slice(2)], {
+const child = spawnSync(npx, ["-y", `hpsetup@${version}`, ...forwarded], {
   cwd: projectRoot,
-  env: {...process.env, ...fileEnv, HEROUI_KEY: key},
+  env: {...process.env, HEROUI_KEY: key},
   shell: process.platform === "win32",
   stdio: "inherit",
 });

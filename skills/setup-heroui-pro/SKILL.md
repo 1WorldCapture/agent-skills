@@ -1,141 +1,134 @@
 ---
 name: setup-heroui-pro
-description: Scaffold or upgrade HeroUI Pro projects and configure project-local HeroUI MCP and Agent Skills. Use for new or existing Web, HeroUI Native, Web-only monorepo, or Web+Native monorepo projects; for hpsetup installation; or when wiring HeroUI Pro into Grok, Codex, Claude Code, and Cursor without global MCP or skill installation.
+description: Scaffold or upgrade HeroUI Pro projects with resumable project-local setup, credential preflight, stable/beta channel enforcement, safe MCP verification, and atomic HeroUI Skill downloads. Use for new or existing Web, HeroUI Native, Web-only monorepo, or Web+Native monorepo projects; for hpsetup installation; or when wiring HeroUI Pro into Grok, Codex, Claude Code, and Cursor without global MCP or vendor Skill installation.
 ---
 
 # Set Up HeroUI Pro
 
-Build the application scaffold first, then configure project-local AI tooling. Keep HeroUI vendor Skills, a mirror of this setup Skill, and credentials under `.agent/`. Let `npx skills` manage the discoverable `setup-heroui-pro` installation so project updates remain reliable.
+Use the deterministic scripts for fragile operations. Keep credentials, MCP, downloaded HeroUI vendor Skills, and setup state project-local.
 
 ## Non-negotiable rules
 
-- Never install HeroUI MCP or HeroUI Skills globally.
-- Never put an HP Key or Personal Token in a URL, command argument, committed file, `package.json`, MCP config, or generated documentation.
-- Read credentials only from the current process environment or the gitignored `.agent/.env.local` file.
-- Use `HEROUI_KEY` for `hpsetup` and `HEROUI_PERSONAL_TOKEN` for `hpmcp` and skill downloads. Never interchange them.
-- Default to stable `latest`; use beta only when the user explicitly requests it.
-- Run `hpsetup --dry-run` before installation or update.
-- Preserve existing project files and unrelated MCP servers. Merge configuration rather than replacing it.
-- Never overwrite the `npx skills`-managed discovery copy of `setup-heroui-pro`; synchronize only downloaded HeroUI vendor Skills.
-- Use Pro subpath imports on Web: `@heroui-pro/react/<component>`. Do not import Pro components from the package root.
+- Never install HeroUI MCP or HeroUI vendor Skills globally.
+- Never print, paste, persist in Git, or place credentials in URLs, command arguments, MCP config, or `package.json`.
+- Require non-empty `HEROUI_KEY` and `HEROUI_PERSONAL_TOKEN` before any authenticated phase.
+- Default to `--channel stable`; use beta only when the user explicitly requests it. Stop if the selected npm tag contradicts the channel.
+- Run the `hpsetup` dry-run phase before installation.
+- Merge existing config and environment files; never replace unrelated settings.
+- Never run `claude mcp list`, `codex mcp list`, or another Agent diagnostic directly. Use `verify-agent-runtime.mjs` so output is captured and redacted.
+- Never overwrite the `npx skills`-managed `setup-heroui-pro` discovery copy. Synchronize only project-local HeroUI vendor Skills.
+- Use Web Pro subpath imports such as `@heroui-pro/react/area-chart`; never import Web Pro components from the package root.
+- Keep the selected package-manager lockfile tracked. Validation commands must not modify the Git work tree.
 
 ## Determine the target
 
-Inspect the repository before asking questions. Determine whether it is new or existing, its package manager, workspace layout, framework, and installed HeroUI packages.
-
-If the answer remains material, ask only for:
+Inspect the repository first. Determine its topology, package manager, workspace layout, framework, existing failures, and HeroUI packages. Ask only when the answer remains material:
 
 1. Topology: `web`, `native`, `monorepo-web`, or `monorepo-web-native`.
-2. New project name/path or confirmation that the current project is the target.
-3. Scaffold preference when relevant: fast template or custom generator.
+2. New project path or confirmation that the current project is the target.
+3. `fast`, `custom`, or existing-project flow.
 
-Default to pnpm and enable all four Agents: `grok,codex,claude,cursor`.
+Default to pnpm, stable, and `grok,codex,claude,cursor`. Use Node.js 20 or newer; use Node.js 22 for Native EAS builds.
 
-Map topology to product:
+## Install the project discovery copy first
 
-| Topology | Product |
-| --- | --- |
-| `web` | `react` |
-| `native` | `native` |
-| `monorepo-web` | `react` |
-| `monorepo-web-native` | `both` |
-
-## Phase 1: Scaffold and install HeroUI Pro
-
-Read [references/scaffold-flows.md](references/scaffold-flows.md) for the chosen topology and follow only that section.
-
-1. Verify Node.js 18+ and the selected package manager. Use Node.js 22 for Native EAS builds using pnpm 11.
-2. Create the scaffold only when the target is new. Do not replace an existing application.
-3. Install dependencies and run the untouched scaffold once. Fix baseline failures before adding Pro.
-4. Create a git checkpoint when the repository is clean enough to do so.
-5. Create the project-local Agent layout before authenticated steps:
-
-Resolve `SKILL_DIR` to the absolute directory containing this `SKILL.md`, and resolve `PROJECT_ROOT` to the target repository root. Do not assume either shell variable already exists; substitute the resolved absolute paths when running the command.
+Run this from the target project before `configure-project.mjs` or the orchestrator:
 
 ```bash
-node "$SKILL_DIR/scripts/configure-project.mjs" \
+npx skills add 1WorldCapture/agent-skills \
+  --skill setup-heroui-pro \
+  --agent codex \
+  --agent cursor \
+  --agent claude-code \
+  --yes
+```
+
+This creates `skills-lock.json`; Grok reads the Claude-compatible project Skill. Do not use `--global` for a project setup.
+
+## Preferred resumable workflow
+
+Resolve `SKILL_DIR` to the directory containing this `SKILL.md` and `PROJECT_ROOT` to the target repository. Do not assume shell variables already exist.
+
+```bash
+node "$SKILL_DIR/scripts/setup.mjs" \
   --root "$PROJECT_ROOT" \
-  --product react \
-  --agents grok,codex,claude,cursor
+  --topology web \
+  --scaffold fast \
+  --agents grok,codex,claude,cursor \
+  --channel stable
 ```
 
-Replace `react` with `native` or `both`. Add `--persist-env` only when both credentials already exist in the process environment and the user wants them stored in `.agent/.env.local`.
+The stateful phases are:
 
-6. If `HEROUI_KEY` is unavailable, complete all non-authenticated setup and ask the user to set it outside chat. Do not ask the user to paste it into the conversation.
-7. Preview and install through the generated runner so the key is never a command argument:
-
-```bash
-node .agent/bin/hpsetup.mjs --dry-run
-node .agent/bin/hpsetup.mjs --auto
+```text
+preflight → scaffold → baseline → discovery → configure → credentials
+→ hpsetup-dry-run → install → skills → verify
 ```
 
-8. Add the required global CSS imports and Native `@source` paths from the topology reference.
-9. Add a minimal representative component, using compound component syntax and Web subpath imports.
-10. Run the project's lint, typecheck, build, and the smallest relevant preview or test.
+If credentials are empty, the command stops safely. Set both outside chat, then rerun the identical command; completed phases are not repeated. Add `--persist-env` only when both values are already non-empty and the user wants them stored in `.agent/.env.local`.
 
-## Phase 2: Configure project-local Agents
-
-Read [references/agent-configuration.md](references/agent-configuration.md) before this phase.
-
-1. Install `hpmcp@latest` as a development dependency at the project or workspace root. Do not use a global package:
+For a final read-only app and runtime check, add a representative Pro component using Web subpath imports or the Native package import, then rerun:
 
 ```bash
-pnpm add -D hpmcp@latest
+node "$SKILL_DIR/scripts/setup.mjs" \
+  --root "$PROJECT_ROOT" \
+  --topology web \
+  --scaffold fast \
+  --agents grok,codex,claude,cursor \
+  --channel stable \
+  --verify \
+  --expect "HeroUI Pro"
 ```
 
-Use `-Dw` at a pnpm workspace root. Use the equivalent local development-dependency command for npm, Bun, or Yarn.
+Read [references/scaffold-flows.md](references/scaffold-flows.md) for topology-specific styles and scaffold choices. Automatic fast scaffolding applies to a new Web project; use the documented custom flow for Native and monorepos.
 
-2. If `HEROUI_PERSONAL_TOKEN` is unavailable, leave the generated configuration in place and ask the user to set the variable outside chat. Do not fall back to embedding it in MCP JSON/TOML.
-3. Install canonical HeroUI skills into `.agent/skills/`:
+## Manual checkpoints
+
+Use these when resuming or diagnosing one phase:
 
 ```bash
+node "$SKILL_DIR/scripts/check-credentials.mjs" --root "$PROJECT_ROOT"
+node "$SKILL_DIR/scripts/configure-project.mjs" --root "$PROJECT_ROOT" --product react --channel stable
+node .agent/bin/hpsetup.mjs --channel stable --dry-run
+node .agent/bin/hpsetup.mjs --channel stable --auto
 node "$SKILL_DIR/scripts/install-agent-skills.mjs" --root "$PROJECT_ROOT"
-```
-
-The script reads the product from `.agent/config.json`, downloads only the needed React/Native skill plus `heroui-pro-design-taste`, and synchronizes Agent discovery copies.
-
-4. Re-run synchronization after updating canonical HeroUI vendor Skills. Use the currently invoked Skill directory, not a possibly stale mirror:
-
-```bash
-node "$SKILL_DIR/scripts/sync-skills.mjs" --root "$PROJECT_ROOT"
-```
-
-5. Verify the complete installation:
-
-```bash
 node "$SKILL_DIR/scripts/verify-project.mjs" --root "$PROJECT_ROOT"
+node "$SKILL_DIR/scripts/verify-app.mjs" --root "$PROJECT_ROOT" --expect "HeroUI Pro"
+node "$SKILL_DIR/scripts/verify-agent-runtime.mjs" --root "$PROJECT_ROOT"
 ```
 
-6. When the corresponding CLI is installed, verify runtime discovery:
+`install-agent-skills.mjs` downloads authenticated tarballs with an HTTP header, rejects unsafe archive entries, stages them under `.agent/.tmp`, and atomically replaces only `.agent/skills/<skill>`. It never executes a remote shell installer or writes user-level directories.
 
-- Grok: `grok inspect` and `grok mcp doctor heroui-pro`
-- Codex: trust the repository, restart if needed, then run `codex mcp list`
-- Claude Code: trust the repository, approve the project MCP, then run `claude mcp list`
-- Cursor: reopen the workspace if needed, then run `cursor-agent mcp list`
+`verify-agent-runtime.mjs` redacts tokens, UUIDs, authorization headers, and URLs. It reports same-name user/project MCP conflicts by scope only and never deletes user configuration.
 
-Do not fail the setup solely because one of these four client CLIs is absent.
+## Git and validation
 
-## Update this setup Skill
+- Initialize new repositories with `git init -b main` when the scaffold did not do so.
+- Keep `pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`, or `bun.lock` tracked.
+- Create a baseline checkpoint only when Git identity and work-tree conditions permit it. Report a skipped checkpoint without swallowing the error or treating it as a successful commit.
+- Require `lint`, `typecheck`, `test`, `build`, and `start` or `preview` scripts. Keep `lint` read-only and put fixes in `lint:fix`; require TypeScript `--noEmit` and non-watch tests.
+- Use `verify-app.mjs` for lint, typecheck, tests, build, HTTP 200/content checks, and proof that validation did not change the work tree.
 
-Update the project installation through `npx skills`, then invoke this Skill once so `configure-project.mjs` refreshes its `.agent/skills/setup-heroui-pro` mirror:
+## Update
+
+Update the project discovery copy, then invoke this Skill so `configure-project.mjs` refreshes the reviewable `.agent` mirror:
 
 ```bash
 npx skills update setup-heroui-pro --project --yes
 ```
 
-Do not update the `.agent` mirror directly and do not use its scripts as the source for an update.
+Do not update the `.agent` mirror directly.
 
 ## Implementation conventions
 
-- For Web, use Tailwind CSS v4 and CSS order: Tailwind, `@heroui/styles`, then `@heroui-pro/react/css`.
-- Use HeroUI v3 compound APIs such as `Card.Header` and `Switch.Control`.
-- Use `onPress`, semantic variants, semantic design tokens, and accessible labels/tooltips.
-- Prefer HeroUI components over custom versions of standard controls.
-- Avoid mixing shadcn theme CSS with HeroUI theme CSS. If an existing app mixes them, isolate or remove conflicting shadcn global tokens before debugging individual components.
-- Treat updates as controlled dependency changes because the Pro payload is delivered dynamically. Test upgrades in a branch and promote verified build artifacts.
+- Use Tailwind CSS v4 and CSS order: Tailwind, `@heroui/styles`, then `@heroui-pro/react/css`.
+- Use HeroUI v3 compound APIs, `onPress`, semantic variants/tokens, and accessible labels or tooltips.
+- Prefer HeroUI components over custom standard controls.
+- Isolate conflicting shadcn global tokens instead of patching individual HeroUI components.
+- Treat Pro updates as controlled dependency changes and test them on a branch.
 
 ## References
 
-- Read [references/scaffold-flows.md](references/scaffold-flows.md) for scaffold commands, style paths, and topology-specific validation.
-- Read [references/agent-configuration.md](references/agent-configuration.md) for the `.agent` layout, four-Agent discovery mapping, MCP generation, credentials, and update flow.
-- Read [references/troubleshooting.md](references/troubleshooting.md) only when installation, bundling, styling, or Native dependency checks fail.
+- Read [references/scaffold-flows.md](references/scaffold-flows.md) for the selected topology.
+- Read [references/agent-configuration.md](references/agent-configuration.md) for project paths, discovery ownership, credentials, and updates.
+- Read [references/troubleshooting.md](references/troubleshooting.md) only for a matching failure.
