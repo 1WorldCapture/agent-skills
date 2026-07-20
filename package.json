@@ -9,7 +9,7 @@
   },
   "scripts": {
     "validate": "node scripts/validate-skills.mjs",
-    "test": "node tests/setup-heroui-pro.test.mjs",
+    "test": "node tests/setup-heroui-pro.test.mjs && node tests/light-ocr-text-extraction.test.mjs",
     "check": "npm run validate && npm test"
   }
 }

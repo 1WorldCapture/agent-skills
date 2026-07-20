@@ -8,6 +8,7 @@ This repository never distributes HeroUI Pro source code, credentials, or licens
 
 | Skill | Purpose |
 | --- | --- |
+| `light-ocr-text-extraction` | 使用 light-ocr 离线提取图片文字、置信度与坐标，并自动解码 TIFF 等格式。 |
 | `setup-heroui-pro` | Scaffold or upgrade HeroUI Pro Web, Native, and monorepo projects through a resumable workflow with credential preflight, stable/beta enforcement, atomic project-local Skill downloads, and redacted MCP verification. |
 
 ## Install
@@ -31,6 +32,26 @@ npx skills add 1WorldCapture/agent-skills \
 
 Do not add `--global`: the HeroUI setup workflow is designed for project-local installation.
 
+安装图片 OCR 技能：
+
+```bash
+npx skills add 1WorldCapture/agent-skills \
+  --skill light-ocr-text-extraction \
+  --agent codex \
+  --agent cursor \
+  --agent claude-code \
+  --yes
+```
+
+该技能也可以全局安装：
+
+```bash
+npx skills add 1WorldCapture/agent-skills \
+  --skill light-ocr-text-extraction \
+  --global \
+  --yes
+```
+
 The current `skills` CLI has explicit targets for Codex, Cursor, and Claude Code but not Grok. Grok officially reads Claude Code project Skills, so the `claude-code` installation supplies Grok compatibility through `.claude/skills/`.
 
 To opt out of anonymous `skills` CLI telemetry:
@@ -45,6 +66,14 @@ DISABLE_TELEMETRY=1 npx skills add 1WorldCapture/agent-skills \
 ```
 
 ## Use
+
+提取 PNG、JPEG、单页 TIFF、静态 WebP、静态 GIF 或 AVIF 图片中的文字时调用：
+
+```text
+$light-ocr-text-extraction
+```
+
+技能在本机使用 PP-OCRv6 Small，生成未经人工修改的纯文本、带坐标与置信度的 JSON，以及中文质量报告。PDF 需要先逐页渲染为图片。
 
 After installation, invoke the Skill from a supported Agent:
 

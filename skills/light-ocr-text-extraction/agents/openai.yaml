@@ -1,0 +1,4 @@
+interface:
+  display_name: "Light OCR 文字提取"
+  short_description: "离线提取图片文字、坐标与置信度，自动处理 TIFF"
+  default_prompt: "使用 $light-ocr-text-extraction 提取附件中的文字并生成可核验结果。"
