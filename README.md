@@ -8,6 +8,7 @@ This repository never distributes HeroUI Pro source code, credentials, or licens
 
 | Skill | Purpose |
 | --- | --- |
+| `freetalk` | 通过简短自然的自由对话梳理模糊想法，并把关键观点持续沉淀到 `docs/freetalk.md`。 |
 | `light-ocr-text-extraction` | 使用 light-ocr 离线提取图片文字、置信度与坐标，并自动解码 TIFF 等格式。 |
 | `setup-heroui-pro` | Scaffold or upgrade HeroUI Pro Web, Native, and monorepo projects through a resumable workflow with credential preflight, stable/beta enforcement, atomic project-local Skill downloads, and redacted MCP verification. |
 
@@ -52,6 +53,15 @@ npx skills add 1WorldCapture/agent-skills \
   --yes
 ```
 
+全局安装自由讨论与思路沉淀技能：
+
+```bash
+npx skills add 1WorldCapture/agent-skills \
+  --skill freetalk \
+  --global \
+  --yes
+```
+
 The current `skills` CLI has explicit targets for Codex, Cursor, and Claude Code but not Grok. Grok officially reads Claude Code project Skills, so the `claude-code` installation supplies Grok compatibility through `.claude/skills/`.
 
 To opt out of anonymous `skills` CLI telemetry:
@@ -66,6 +76,14 @@ DISABLE_TELEMETRY=1 npx skills add 1WorldCapture/agent-skills \
 ```
 
 ## Use
+
+想从一个模糊念头开始自由讨论，并把逐渐清晰的关键内容沉淀到项目文档时调用：
+
+```text
+$freetalk
+```
+
+技能默认维护当前工作区的 `docs/freetalk.md`，将它整理为当前最佳理解，而不是逐字聊天记录。每轮对话只推进一个重点，并保持简短自然。
 
 提取 PNG、JPEG、单页 TIFF、静态 WebP、静态 GIF 或 AVIF 图片中的文字时调用：
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Free Talk 思路共创"
+  short_description: "通过简短自然的自由对话梳理模糊想法，并持续沉淀关键结论"
+  default_prompt: "使用 $freetalk 和我自由聊聊这个想法，并把值得保留的内容沉淀到 docs。"
