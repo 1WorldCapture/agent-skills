@@ -1,0 +1,4 @@
+interface:
+  display_name: "AGENTS.md 维护"
+  short_description: "按原则与骨架创建或更新项目根目录的英文 AGENTS.md"
+  default_prompt: "使用 $agents-md 检查并创建或更新本项目的 AGENTS.md。"

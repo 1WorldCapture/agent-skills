@@ -8,6 +8,7 @@ This repository never distributes HeroUI Pro source code, credentials, or licens
 
 | Skill | Purpose |
 | --- | --- |
+| `agents-md` | 按原则与松散骨架创建或维护项目根目录的英文 `AGENTS.md`（含一周新鲜度与 handcraft 只读保留）。 |
 | `freetalk` | 通过简短自然的自由对话梳理模糊想法，并把关键观点持续沉淀到 `docs/freetalk.md`。 |
 | `light-ocr-text-extraction` | 使用 light-ocr 离线提取图片文字、置信度与坐标，并自动解码 TIFF 等格式。 |
 | `mission-crew` | Captain → PM 任务编排：对齐目标、写临时 OpenSpec BRIEF、在 worktree 中只拉起 PM，并由 PM 产出 proposal。 |
@@ -63,6 +64,24 @@ npx skills add 1WorldCapture/agent-skills \
   --yes
 ```
 
+安装 / 全局安装 `AGENTS.md` 维护技能：
+
+```bash
+npx skills add 1WorldCapture/agent-skills \
+  --skill agents-md \
+  --agent codex \
+  --agent cursor \
+  --agent claude-code \
+  --yes
+```
+
+```bash
+npx skills add 1WorldCapture/agent-skills \
+  --skill agents-md \
+  --global \
+  --yes
+```
+
 安装 Mission Crew（Captain → PM）技能：
 
 ```bash
@@ -113,6 +132,14 @@ $freetalk
 ```
 
 技能默认维护当前工作区的 `docs/freetalk.md`，将它整理为当前最佳理解，而不是逐字聊天记录。每轮对话只推进一个重点，并保持简短自然。
+
+想创建或维护项目根目录的 `AGENTS.md` 时调用：
+
+```text
+$agents-md
+```
+
+技能说明为中文，写出的 `AGENTS.md` 为英文。无文件则创建；有文件则按 git（或 mtime）判断是否超过一周再更新。一周内默认跳过，除非用户明示要求更新。更新时完整保留 `## Handcraft` 人类手写章节。
 
 提取 PNG、JPEG、单页 TIFF、静态 WebP、静态 GIF 或 AVIF 图片中的文字时调用：
 
