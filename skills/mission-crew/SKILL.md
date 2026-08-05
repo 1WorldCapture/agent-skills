@@ -1,19 +1,19 @@
 ---
 name: mission-crew
 description: >
-  Coordinate a Captain → PM mission workflow: clarify a high-level goal with the
-  user, write a temporary OpenSpec BRIEF, kick off an isolated worktree with only
-  a PM agent, and have the PM turn that BRIEF into an OpenSpec proposal. Use when
-  the user mentions mission-crew, Captain/PM, multi-agent task kickoff, OpenSpec
-  proposal from a brief, worktree mission isolation, or wants to start a crew for
-  a change without implementing the full design/coding/verification pipeline yet.
+  Coordinate a Captain → PM → Design/Impl/QA mission workflow over OpenSpec:
+  clarify a high-level goal with the user, write a temporary OpenSpec BRIEF,
+  kick off an isolated worktree with a PM agent, and let PM drive the pipeline
+  (explore → propose → apply → verify) inside the worktree. Use when the user mentions mission-crew, Captain/PM, multi-agent
+  task kickoff, OpenSpec proposal from a brief, worktree mission isolation, or
+  wants to run a feature change through a small agent crew.
 ---
 
 # Mission Crew
 
 Two-level mission orchestration. The user appoints **Captain**. Captain appoints
-**PM** through an inline prompt. Later, PM will appoint other agents the same way;
-that team dispatch is **not** in v1.
+**PM** through an inline prompt. PM appoints **Design**, **Impl**, and **QA**
+the same way, one at a time, inside the mission worktree.
 
 ## Role routing
 
@@ -21,19 +21,24 @@ that team dispatch is **not** in v1.
 2. Resolve the role file **relative to this `SKILL.md`** (not relative to your cwd):
    - Captain → `roles/captain.md`
    - PM → `roles/pm.md`
+   - Design → `roles/design.md`
+   - Impl → `roles/impl.md`
+   - QA → `roles/qa.md`
 3. Follow that role file for duties and workflow. Keep this `SKILL.md` as the
-   shared contract (artifacts, appointment rules, v1 limits).
+   shared contract (artifacts, appointment rules, scope limits).
 4. If the user is starting a mission and has not appointed another role, act as
    **Captain** (user appointment).
 5. Do not invent a role. If the appointment is missing or unknown, ask.
 
 ## Appointment chain
 
-| Who | Appointed by | How |
-| --- | --- | --- |
-| Captain | User | User asks to run `mission-crew` / act as Captain |
-| PM | Captain | Inline prompt from kickoff |
-| Other agents | PM | Inline prompt — **not in v1** |
+| Who | Appointed by | How | Agent kind (default) |
+| --- | --- | --- | --- |
+| Captain | User | User asks to run `mission-crew` / act as Captain | — |
+| PM | Captain | Inline prompt from `scripts/kickoff-pm.sh` | cursor |
+| Design | PM | Inline prompt from `scripts/kickoff-worker.sh` | codex (gpt-5.6-sol, high effort) |
+| Impl | PM | Inline prompt from `scripts/kickoff-worker.sh` | grok |
+| QA | PM | Inline prompt from `scripts/kickoff-worker.sh` | codex (gpt-5.6-sol, high effort) |
 
 Every appointment prompt must include:
 
@@ -48,8 +53,25 @@ Appointed agents apply this skill and then follow the role file next to this
 
 | Artifact | Path | Lifetime |
 | --- | --- | --- |
-| Brief (temporary) | `openspec/changes/<slug>/BRIEF.md` | Written in the main checkout, **moved** into the worktree at kickoff, deleted by PM after an aligned proposal exists |
-| Proposal | `openspec/changes/<slug>/proposal.md` | Created by PM inside the worktree; remains as the handoff |
+| Brief (temporary) | `openspec/changes/<slug>/BRIEF.md` | Written in the main checkout, **moved** into the worktree at kickoff, refined by PM during explore, deleted by Design after aligned propose artifacts exist |
+| Proposal / design / specs / tasks | `openspec/changes/<slug>/proposal.md`, `design.md`, `specs/`, `tasks.md` | Created by Design via the OpenSpec propose skill, faithful to the BRIEF |
+| Implementation | worktree diff | Written by Impl via the OpenSpec apply-change skill; verified and fixed by QA |
+
+## Completion signals
+
+| Signal | Emitted by | Watched by | Meaning |
+| --- | --- | --- | --- |
+| `DESIGN_DONE slug=<slug>` | Design | PM | proposal.md, design.md, specs, tasks.md ready and aligned; BRIEF deleted |
+| `IMPL_DONE slug=<slug>` | Impl | PM | tasks.md implemented in the worktree |
+| `QA_DONE slug=<slug>` | QA | PM | implementation verified and issues fixed |
+| `PM_DONE slug=<slug>` | PM | Captain | whole pipeline finished (only after QA_DONE) |
+
+Watch a worker's signal with an anchored `pane wait-output` regex
+(`^[^[:alnum:]]{0,3}DESIGN_DONE ` etc.) on `recent-unwrapped`, never
+`agent wait` — the appointment prompt echo contains the marker text, agents
+render final messages with different prefixes (cursor two-space indent, codex
+a `• ` bullet), and agent status events can miss transitions on background
+panes. Keep each wait at ~5 minutes and repeat on timeout.
 
 Rules:
 
@@ -89,31 +111,33 @@ Rules:
 feature | bugfix | architecture
 ```
 
-`Mission type` is optional in v1 (reserved for later team shapes). Empty optional
-sections may be omitted.
+`Mission type` is optional. Only `feature` runs the full pipeline today;
+`bugfix` and `architecture` stop after the proposal stage (see
+`roles/pm.md`). Empty optional sections may be omitted.
 
-## v1 scope
+## Current scope
 
-**In scope**
+**In scope (feature pipeline)**
 
 - Captain clarifies high-level intent with the user
 - Captain ensures OpenSpec (base + agent tool skills) is initialized in the main checkout
 - Captain writes BRIEF, runs `scripts/kickoff-pm.sh`, appoints PM only
-- PM reads BRIEF, creates the proposal via the OpenSpec propose skill,
-  self-checks alignment, deletes BRIEF
-- Captain polls the PM pane for `PM_DONE` and verifies the proposal exists
+- PM reads BRIEF and runs the OpenSpec **explore** flow: investigate the
+  codebase, refine BRIEF (no scope growth)
+- PM kicks off Design → Impl → QA sequentially via `scripts/kickoff-worker.sh`,
+  waits for each `*_DONE`, then emits `PM_DONE`
+- Design runs the OpenSpec **propose** flow (proposal + design + specs +
+  tasks), self-checks against BRIEF, deletes BRIEF
+- Impl runs the OpenSpec **apply-change** flow; QA verifies and fixes
+- Captain watches the PM pane for `PM_DONE` and verifies the artifacts exist
 
-**Out of scope (do not do in v1)**
+**Out of scope (do not do)**
 
-- PM kicking off Design / Coding / Verification agents
-- Writing `design.md`, delta specs, or `tasks.md` as part of this skill's required flow
-- Implementing product code for the mission
-
-Reserved team shapes for a later version:
-
-- feature: PM → Design → Coding → Verification
-- bugfix: PM → Design&Coding → Verification
-- architecture: PM → Design → Verification
+- `bugfix` and `architecture` mission types (reserved team shapes:
+  bugfix = PM → Design&Impl → QA, architecture = PM → Design → QA)
+- Parallel crew agents (the pipeline is strictly sequential)
+- `openspec archive`, committing, merging, or opening PRs for the mission
+- Any agent starting agents other than the appointments above
 
 ## Tooling notes
 

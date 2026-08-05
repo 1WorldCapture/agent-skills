@@ -13,7 +13,8 @@ Read `../SKILL.md` for shared contracts, then follow this file.
 - Ensure the main checkout has an OpenSpec base (`openspec/`)
 - Write `openspec/changes/<slug>/BRIEF.md` in the **main** checkout
 - Run `scripts/kickoff-pm.sh` so BRIEF is moved into a new worktree and PM starts
-- Stay available for later mission outcomes; v1 ends once PM has produced a proposal
+- Stay available for the mission outcome; a mission ends when PM reports
+  `PM_DONE` after the full pipeline (explore → propose → apply → verify)
 
 ## Must not
 
@@ -103,10 +104,9 @@ Read `../SKILL.md` for shared contracts, then follow this file.
    The script will:
    - create/open a worktree workspace
    - **move** BRIEF into the worktree
-   - start `pm-<slug>`, wait for idle, then **probe the input path** (agents like
-     cursor drop prompts during their first-run trust dialog while reporting
-     `idle`; the probe retries until PM answers `PONG`)
-   - send the PM appointment prompt only after the probe passes
+   - start `pm-<slug>` and wait for it to settle at idle
+   - send the PM appointment prompt with `herdr agent prompt --wait --until working`,
+     so kickoff succeeds only after Herdr observes the PM enter a working turn
 
 6. **After kickoff: monitor PM to completion**  
    Confirm to the user that PM is running in the worktree and that BRIEF left the
@@ -115,7 +115,7 @@ Read `../SKILL.md` for shared contracts, then follow this file.
 
    ```bash
    # pane id is printed by kickoff (pane=wN:p1). Wait for the completion marker:
-   herdr pane wait-output <pane> --regex '^ *PM_DONE ' --source recent-unwrapped --lines 400 --timeout 600000
+   herdr pane wait-output <pane> --regex '^[^[:alnum:]]{0,3}PM_DONE ' --source recent-unwrapped --lines 400 --timeout 300000
    # then verify the handoff artifact exists:
    test -f <worktree>/openspec/changes/<slug>/proposal.md
    ```
@@ -124,24 +124,29 @@ Read `../SKILL.md` for shared contracts, then follow this file.
      event-driven and can miss the working→idle transition for background
      panes, while `wait-output` polls the pane text and returns as soon as the
      marker appears.
-   - The regex must be anchored (`^ *PM_DONE `): the echoed appointment prompt
-     itself contains `PM_DONE`, and an unanchored match would fire immediately.
-     `recent-unwrapped` keeps the echoed prompt on one logical line so it can
-     never wrap into a false match.
-   - Marker matched + proposal exists → report the proposal path to the user;
-     v1 mission done.
-   - Wait times out while PM is still working → wait again.
-   - PM is idle but `PM_DONE` or the proposal is missing → read PM's output
+   - The regex must be anchored and allow a short non-alphanumeric prefix
+     (`^[^[:alnum:]]{0,3}PM_DONE `): the echoed appointment prompt itself
+     contains `PM_DONE` (an unanchored match would fire immediately), and
+     agents render final messages with different prefixes — cursor two-space
+     indent, codex a `• ` bullet. `recent-unwrapped` keeps the echoed prompt
+     on one logical line so it can never wrap into a false match.
+   - Keep each wait at ~5 minutes and repeat on timeout: agent shell tools
+     abort longer-running commands.
+   - Marker matched + proposal exists → report the outcome to the user;
+     mission done.
+   - Wait times out while PM is still working (the full pipeline can take a
+     long time — PM drives Design, Impl, and QA before `PM_DONE`) → wait again.
+   - PM is idle but `PM_DONE` or the artifacts are missing → read PM's output
      (`herdr agent read pm-<slug> --source recent-unwrapped --lines 200`),
-     report the actual state to the user, and stop. Do not kick off more
-     agents in v1.
+     report the actual state to the user, and stop. Do not kick off agents
+     yourself.
 
 ## PM appointment prompt (owned by kickoff script)
 
 Captain relies on `scripts/kickoff-pm.sh` to send a prompt equivalent to:
 
 ```text
-You are appointed PM for mission slug=<slug>. Use skill mission-crew as PM. Working directory is this worktree checkout: <worktree>. Read openspec/changes/<slug>/BRIEF.md, then use the OpenSpec propose skill to create the proposal for this change. Self-check proposal alignment against the BRIEF, then delete BRIEF.md. v1: do not start other agents; do not write design/tasks/code. When finished, reply with: PM_DONE slug=<slug>
+You are appointed PM for mission slug=<slug>. Use skill mission-crew as PM. Working directory is this worktree checkout: <worktree>. Read openspec/changes/<slug>/BRIEF.md, then use the OpenSpec explore skill to investigate the codebase and refine the BRIEF (clarifications only, no scope growth; keep BRIEF.md in place). Then kick off Design, Impl, and QA one at a time with the mission-crew kickoff-worker.sh script, wait for each *_DONE marker, and proceed to the next stage. Trust each stage's completion marker as the stage result. When the whole pipeline is finished, reply with: PM_DONE slug=<slug>
 ```
 
 If you must appoint PM manually (script failure), use that text with

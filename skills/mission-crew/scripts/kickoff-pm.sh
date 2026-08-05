@@ -140,40 +140,38 @@ if ! herdr agent start "$PM_NAME" --kind "$PM_KIND" --pane "$pane_id" --timeout 
   exit 1
 fi
 
-# Some agents (e.g. cursor) show a first-run workspace-trust dialog after
-# herdr already reports them ready; prompts sent in that window are silently
-# dropped even though `agent prompt` exits 0. Agent status cannot be trusted
-# here either: screen detection falls back to "idle" while the dialog is up.
-# Prove the input path end-to-end with a probe before the real prompt.
+# Wait for managed startup to settle before sending the appointment. The
+# appointment itself is submitted with --wait so Herdr must observe a new
+# working transition instead of reporting success after only queueing bytes.
 echo "waiting for PM agent to become idle: $PM_NAME"
 if ! herdr agent wait "$PM_NAME" --until idle --timeout 120000; then
   echo "kickoff failed: PM agent did not become idle; PM=${PM_NAME}, BRIEF=$dest_brief" >&2
   exit 1
 fi
 
-echo "probing PM input path: $PM_NAME"
-probe_ok=0
-for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-  herdr agent prompt "$PM_NAME" "Reply with exactly: PONG" >/dev/null 2>&1 || true
-  # The echoed probe request contains "PONG" too; only accept a bare PONG line.
-  # Use recent-unwrapped so the echoed request stays one logical line and
-  # cannot wrap into a false bare-PONG match.
-  if herdr pane wait-output "$pane_id" --regex '^ *PONG *$' --source recent-unwrapped --lines 100 --timeout 15000 >/dev/null 2>&1; then
-    probe_ok=1
-    break
-  fi
-  echo "probe attempt $attempt: PM not responsive yet; retrying"
-done
-if [ "$probe_ok" -ne 1 ]; then
-  echo "kickoff failed: PM did not respond to probe; PM=${PM_NAME}, BRIEF=$dest_brief" >&2
-  exit 1
-fi
-
-pm_prompt="You are appointed PM for mission slug=${SLUG}. Use skill mission-crew as PM. Working directory is this worktree checkout: ${worktree_path}. Read openspec/changes/${SLUG}/BRIEF.md, then use the OpenSpec propose skill to create the proposal for this change. Self-check proposal alignment against the BRIEF, then delete BRIEF.md. v1: do not start other agents; do not write design/tasks/code. When finished, reply with: PM_DONE slug=${SLUG}"
+pm_prompt="You are appointed PM for mission slug=${SLUG}. Use skill mission-crew as PM. Working directory is this worktree checkout: ${worktree_path}. Read openspec/changes/${SLUG}/BRIEF.md, then use the OpenSpec explore skill to investigate the codebase and refine the BRIEF (clarifications only, no scope growth; keep BRIEF.md in place). Then kick off Design, Impl, and QA one at a time with the mission-crew kickoff-worker.sh script, wait for each *_DONE marker, and proceed to the next stage. Trust each stage's completion marker as the stage result. When the whole pipeline is finished, reply with: PM_DONE slug=${SLUG}"
 
 echo "sending PM appointment prompt"
-if ! herdr agent prompt "$PM_NAME" "$pm_prompt"; then
-  echo "kickoff failed: PM prompt was not delivered; PM=${PM_NAME}, BRIEF=$dest_brief" >&2
+prompt_started=0
+for attempt in 1 2 3; do
+  if herdr agent prompt "$PM_NAME" "$pm_prompt" --wait --until working --timeout 15000 >/dev/null; then
+    prompt_started=1
+    break
+  fi
+
+  observed_status="$(herdr agent get "$PM_NAME" 2>/dev/null | jq -r '.result.agent.agent_status // "unknown"' 2>/dev/null || printf 'unknown')"
+  if [[ "$observed_status" == "working" ]]; then
+    prompt_started=1
+    break
+  fi
+  if [[ "$observed_status" != "idle" && "$observed_status" != "unknown" ]]; then
+    break
+  fi
+  echo "PM appointment attempt ${attempt} did not start a working turn; retrying"
+  sleep 1
+done
+if [ "$prompt_started" -ne 1 ]; then
+  echo "kickoff failed: PM prompt did not start a working turn; PM=${PM_NAME}, BRIEF=$dest_brief" >&2
   exit 1
 fi
 
@@ -185,5 +183,5 @@ worktree=${worktree_path}
 pane=${pane_id}
 pm=${PM_NAME}
 brief=${dest_brief}
-monitor: herdr pane wait-output ${pane_id} --regex '^ *PM_DONE ' --source recent-unwrapped --lines 400 --timeout 600000
+monitor: herdr pane wait-output ${pane_id} --regex '^[^[:alnum:]]{0,3}PM_DONE ' --source recent-unwrapped --lines 400 --timeout 300000
 EOF
