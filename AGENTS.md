@@ -2,7 +2,7 @@
 
 ## Project overview
 
-This repository publishes self-contained Agent Skills for installation via the open `npx skills` CLI (Codex, Cursor, Claude Code; Grok reads Claude Code project skill paths).
+This repository publishes self-contained Agent Skills for installation via the open `npx skills` CLI. The CLI installs one copy into the cross-agent `.agents/skills/` directory (`~/.agents/skills/` when global), which every agent following that convention reads; `--agent <name>` adds agent-specific copies such as `.claude/skills/`.
 
 Agents working here should:
 
@@ -50,7 +50,7 @@ npx skills add "$PWD" --list
 
 `npm run check` runs validate then test.
 
-For installation-path changes, also exercise project-local install into `codex`, `cursor`, and `claude-code`. Grok compatibility is supplied through the Claude Code project Skill path.
+For installation-path changes, also exercise a project-local install in a scratch directory and confirm the Skill lands at `.agents/skills/<name>` with its references and scripts intact. Exercise `--agent claude-code` as well when a change must stay visible to Grok, which has no dedicated CLI target and reads Claude Code project Skills.
 
 ## Versioning
 

@@ -12,6 +12,7 @@ This repository never distributes HeroUI Pro source code, credentials, or licens
 | `freetalk` | 通过简短自然的自由对话梳理模糊想法，并把关键观点持续沉淀到 `docs/freetalk.md`。 |
 | `light-ocr-text-extraction` | 使用 light-ocr 离线提取图片文字、置信度与坐标，并自动解码 TIFF 等格式。 |
 | `mission-crew` | Captain → PM 任务编排：对齐目标、写临时 OpenSpec BRIEF、在 worktree 中只拉起 PM，并由 PM 产出 proposal。 |
+| `pi-sdk` | 在 Pi Coding Agent SDK（`@earendil-works/pi-coding-agent`）上构建自定义 Agent 的参考：从跑通第一个会话，到定制行为、工具与运行时扩展。 |
 | `setup-heroui-pro` | Scaffold or upgrade HeroUI Pro Web, Native, and monorepo projects through a resumable workflow with credential preflight, stable/beta enforcement, atomic project-local Skill downloads, and redacted MCP verification. |
 
 ## Install
@@ -22,14 +23,13 @@ List available skills:
 npx skills add 1WorldCapture/agent-skills --list
 ```
 
+The `skills` CLI installs one copy into the cross-agent directory: `.agents/skills/<name>` for a project, `~/.agents/skills/<name>` with `--global`. Every agent that follows the `.agents` convention reads that same copy, so the commands below pass no `--agent` flags. Use `--agent <name>` only to also place agent-specific copies or symlinks under directories such as `.claude/skills/`.
+
 Install `setup-heroui-pro` into the current project:
 
 ```bash
 npx skills add 1WorldCapture/agent-skills \
   --skill setup-heroui-pro \
-  --agent codex \
-  --agent cursor \
-  --agent claude-code \
   --yes
 ```
 
@@ -40,9 +40,6 @@ Do not add `--global`: the HeroUI setup workflow is designed for project-local i
 ```bash
 npx skills add 1WorldCapture/agent-skills \
   --skill light-ocr-text-extraction \
-  --agent codex \
-  --agent cursor \
-  --agent claude-code \
   --yes
 ```
 
@@ -69,9 +66,6 @@ npx skills add 1WorldCapture/agent-skills \
 ```bash
 npx skills add 1WorldCapture/agent-skills \
   --skill agents-md \
-  --agent codex \
-  --agent cursor \
-  --agent claude-code \
   --yes
 ```
 
@@ -87,9 +81,6 @@ npx skills add 1WorldCapture/agent-skills \
 ```bash
 npx skills add 1WorldCapture/agent-skills \
   --skill mission-crew \
-  --agent codex \
-  --agent cursor \
-  --agent claude-code \
   --yes
 ```
 
@@ -102,16 +93,32 @@ npx skills add 1WorldCapture/agent-skills \
   --yes
 ```
 
-The current `skills` CLI has explicit targets for Codex, Cursor, and Claude Code but not Grok. Grok officially reads Claude Code project Skills, so the `claude-code` installation supplies Grok compatibility through `.claude/skills/`.
+安装 Pi Coding Agent SDK 学习与集成技能：
+
+```bash
+npx skills add 1WorldCapture/agent-skills \
+  --skill pi-sdk \
+  --yes
+```
+
+也可全局安装：
+
+```bash
+npx skills add 1WorldCapture/agent-skills \
+  --skill pi-sdk \
+  --global \
+  --yes
+```
+
+Pi 从 `~/.agents/skills/` 和项目下受信任的 `.agents/skills/` 发现技能，所以不需要再往 `~/.pi/agent/skills/` 或 `.pi/skills/` 额外拷贝一份，也不需要 `pi --skill <path>`。
+
+Grok has no dedicated CLI target. It reads Claude Code project Skills, so install with `--agent claude-code` when a Skill must be visible to Grok specifically.
 
 To opt out of anonymous `skills` CLI telemetry:
 
 ```bash
 DISABLE_TELEMETRY=1 npx skills add 1WorldCapture/agent-skills \
   --skill setup-heroui-pro \
-  --agent codex \
-  --agent cursor \
-  --agent claude-code \
   --yes
 ```
 
@@ -140,6 +147,14 @@ $agents-md
 ```
 
 技能说明为中文，写出的 `AGENTS.md` 为英文。无文件则创建；有文件则按 git（或 mtime）判断是否超过一周再更新。一周内默认跳过，除非用户明示要求更新。更新时完整保留 `## Handcraft` 人类手写章节。
+
+想基于 Pi 做一个自己的 Agent、把 Pi Agent 嵌入应用，或扩展与调试已有的 Pi Agent 时调用：
+
+```text
+$pi-sdk
+```
+
+`SKILL.md` 自带跑通第一个 Agent 所需的全部内容：心智模型、启动路径、核心概念表与常见故障；提示词与 Skills、工具、扩展钩子、内核改动这四类深入内容按任务从 `references/` 按需读取。本地只保留一个最小可运行示例，其余示例改为指向上游仓库 [earendil-works/pi](https://github.com/earendil-works/pi) `main` 分支的链接，避免技能内的拷贝随上游更新而过时。
 
 提取 PNG、JPEG、单页 TIFF、静态 WebP、静态 GIF 或 AVIF 图片中的文字时调用：
 
@@ -201,14 +216,12 @@ The CLI may list but not update installations whose recorded source is a local f
 ## Remove
 
 ```bash
-npx skills remove setup-heroui-pro \
-  --agent codex \
-  --agent cursor \
-  --agent claude-code \
-  --yes
+npx skills remove setup-heroui-pro --yes
 ```
 
-Removal does not automatically delete project files previously generated under `.agent/`, `.codex/`, `.cursor/`, `.grok/`, or `.mcp.json`. Review those files before removing them.
+Add `--agent '*'` to also clear agent-specific copies created by an earlier `--agent` install.
+
+Removal does not automatically delete project files previously generated under `.agent/`, `.agents/`, `.codex/`, `.cursor/`, `.grok/`, or `.mcp.json`. Review those files before removing them.
 
 ## Private repository
 
