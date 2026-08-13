@@ -1,0 +1,6 @@
+interface:
+  display_name: "Pi Coding Agent SDK"
+  short_description: "Reference for building a custom agent on the Pi Coding Agent SDK"
+  default_prompt: "Use $pi-sdk to help me build a custom agent on Pi, starting from a minimal working session."
+policy:
+  allow_implicit_invocation: true
