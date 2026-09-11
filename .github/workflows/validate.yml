@@ -53,10 +53,40 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Activate current stable pnpm
+      - name: Activate newest stable pnpm supported by this Node
+        # pnpm@latest can raise its Node floor (pnpm 11 needs Node >=22.13), so
+        # fall back to the newest stable major whose engines.node fits the runner.
         run: |
-          version="$(npm view pnpm dist-tags.latest)"
-          case "$version" in *-*) echo "pnpm latest is prerelease: $version"; exit 1;; esac
+          version="$(node --input-type=module <<'NODE'
+          import {execFileSync} from "node:child_process";
+          const nodeVersion = process.versions.node;
+          const npm = (...args) => execFileSync("npm", args, {encoding: "utf8"}).trim();
+          const meta = JSON.parse(npm("view", "pnpm", "--json"));
+          const latest = meta["dist-tags"].latest;
+          if (latest.includes("-")) throw new Error(`pnpm latest is prerelease: ${latest}`);
+          const cmp = (a, b) => {
+            const [x, y] = [a, b].map((v) => v.split(".").map(Number));
+            return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+          };
+          // Newest stable release of each major, never newer than the `latest` tag, newest first.
+          const candidates = [...new Map(
+            meta.versions.filter((v) => !v.includes("-") && cmp(v, latest) <= 0).sort(cmp).map((v) => [v.split(".")[0], v]),
+          ).values()].reverse();
+          for (const version of candidates) {
+            const range = npm("view", `pnpm@${version}`, "engines.node");
+            try {
+              execFileSync("npx", ["-y", "semver@7", "-r", range, nodeVersion], {stdio: "ignore"});
+            } catch {
+              console.error(`pnpm@${version} needs Node ${range}; runner has ${nodeVersion}`);
+              continue;
+            }
+            console.log(version);
+            process.exit(0);
+          }
+          throw new Error(`No stable pnpm release supports Node ${nodeVersion}`);
+          NODE
+          )"
+          echo "Using pnpm@$version on Node $(node -v)"
           corepack enable
           corepack prepare "pnpm@$version" --activate
       - name: Resolve stable package tags

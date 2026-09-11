@@ -28,7 +28,7 @@ node "$SKILL_DIR/scripts/setup.mjs" \
   --channel stable
 ```
 
-The fast flow uses the current stable `create-next-app`, the official Next.js flat ESLint config, a read-only `lint`, separate `lint:fix`, `tsc --noEmit`, and a minimal non-watch Vitest test. It does not import or depend on the authenticated Pro payload during baseline validation. The repository's scheduled CI exercises this baseline on Node.js 20 and 22 with the current stable pnpm and public HeroUI packages.
+The fast flow uses the current stable `create-next-app`, the official Next.js flat ESLint config, a read-only `lint`, separate `lint:fix`, `tsc --noEmit`, and a minimal non-watch Vitest test. It does not import or depend on the authenticated Pro payload during baseline validation. The repository's scheduled CI exercises this baseline on Node.js 20 and 22 with the newest stable pnpm whose `engines.node` supports each runner (pnpm 11 requires Node.js 22.13+, so Node.js 20 falls back to pnpm 10) and public HeroUI packages.
 
 ### Custom scaffold
 
