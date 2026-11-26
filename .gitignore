@@ -5,6 +5,7 @@
 .codex/
 .grok/
 .pi/
+.zcode/
 .mcp.json
 skills-lock.json
 node_modules/

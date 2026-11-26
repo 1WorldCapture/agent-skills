@@ -14,6 +14,7 @@ This repository never distributes HeroUI Pro source code, credentials, or licens
 | `mission-crew` | Captain → PM 任务编排：对齐目标、写临时 OpenSpec BRIEF、在 worktree 中只拉起 PM，并由 PM 产出 proposal。 |
 | `pi-sdk` | 在 Pi Coding Agent SDK（`@earendil-works/pi-coding-agent`）上构建自定义 Agent 的参考：从跑通第一个会话，到定制行为、工具与运行时扩展。 |
 | `setup-heroui-pro` | Scaffold or upgrade HeroUI Pro Web, Native, and monorepo projects through a resumable workflow with credential preflight, stable/beta enforcement, atomic project-local Skill downloads, and redacted MCP verification. |
+| `zcode-agent-bootstrap` | 面向 ZCode 的 Agent 工作区脚手架：在项目根生成 `AGENTS.md`、`.agents/skills` 技能根、身份与行为文件、可审计记忆、routines、日志与 artifacts，生成的布局可移植到 Cursor、Codex、Antigravity；只补缺失文件，可幂等重跑并校验。 |
 
 ## Install
 
@@ -23,7 +24,7 @@ List available skills:
 npx skills add 1WorldCapture/agent-skills --list
 ```
 
-The `skills` CLI installs one copy into the cross-agent directory: `.agents/skills/<name>` for a project, `~/.agents/skills/<name>` with `--global`. Every agent that follows the `.agents` convention reads that same copy, so the commands below pass no `--agent` flags. Use `--agent <name>` only to also place agent-specific copies or symlinks under directories such as `.claude/skills/`.
+The `skills` CLI installs one copy into the cross-agent directory: `.agents/skills/<name>` for a project, `~/.agents/skills/<name>` with `--global`. Every agent that follows the `.agents` convention reads that same copy, so the commands below pass no `--agent` flags. Use `--agent <name>` only to also place agent-specific copies or symlinks under directories such as `.claude/skills/`. The one exception is `zcode-agent-bootstrap`, which targets ZCode: its commands pass `--agent zcode` so the CLI copies the Skill into ZCode's own `.zcode/skills/` instead.
 
 Install `setup-heroui-pro` into the current project:
 
@@ -112,6 +113,25 @@ npx skills add 1WorldCapture/agent-skills \
 
 Pi 从 `~/.agents/skills/` 和项目下受信任的 `.agents/skills/` 发现技能，所以不需要再往 `~/.pi/agent/skills/` 或 `.pi/skills/` 额外拷贝一份，也不需要 `pi --skill <path>`。
 
+安装 Agent 工作区脚手架。它面向 ZCode，所以安装命令要带 `--agent zcode`：`skills` CLI 会把技能直接复制到 ZCode 自己的 `~/.zcode/skills/zcode-agent-bootstrap/`，而不是 `~/.agents/skills/`：
+
+```bash
+npx skills add 1WorldCapture/agent-skills \
+  --skill zcode-agent-bootstrap \
+  --global \
+  --agent zcode \
+  --yes
+```
+
+也可以项目级安装，落在 `<project>/.zcode/skills/zcode-agent-bootstrap/`：
+
+```bash
+npx skills add 1WorldCapture/agent-skills \
+  --skill zcode-agent-bootstrap \
+  --agent zcode \
+  --yes
+```
+
 Grok has no dedicated CLI target. It reads Claude Code project Skills, so install with `--agent claude-code` when a Skill must be visible to Grok specifically.
 
 To opt out of anonymous `skills` CLI telemetry:
@@ -155,6 +175,14 @@ $pi-sdk
 ```
 
 `SKILL.md` 自带跑通第一个 Agent 所需的全部内容：心智模型、启动路径、核心概念表与常见故障；提示词与 Skills、工具、扩展钩子、内核改动这四类深入内容按任务从 `references/` 按需读取。本地只保留一个最小可运行示例，其余示例改为指向上游仓库 [earendil-works/pi](https://github.com/earendil-works/pi) `main` 分支的链接，避免技能内的拷贝随上游更新而过时。
+
+想为一个新项目（或已有项目）搭一套可移植的 Agent 工作区时调用：
+
+```text
+$zcode-agent-bootstrap
+```
+
+技能运行包内的 `scripts/bootstrap.py`，提供 `bootstrap`、`repair`、`validate`、`status` 四种模式和 `--dry-run` 预览。它只创建缺失的路径，不覆盖已有的 `AGENTS.md`、身份文件、记忆与 routines；定制完成后用 `validate` 做一次只读检查。
 
 提取 PNG、JPEG、单页 TIFF、静态 WebP、静态 GIF 或 AVIF 图片中的文字时调用：
 
