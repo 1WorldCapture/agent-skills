@@ -184,7 +184,7 @@ $zcode-agent-bootstrap
 
 技能运行包内的 `scripts/bootstrap.py`，提供 `bootstrap`、`repair`、`validate`、`status` 四种基础模式和 `--dry-run` 预览。它只创建缺失的路径，不覆盖已有的 `AGENTS.md`、身份文件、记忆与 routines；定制完成后用 `validate` 做一次只读检查。
 
-要把项目接入 Vercel Board 时，明确要求才会运行第五种模式 `board-init`，普通的 `bootstrap` 不涉及 Board。它会在当前项目里安装官方的 Board Skill（`npx skills add vercel/board --skill board --yes`），并生成 `INTEGRATIONS/VERCEL_BOARD.md`（Board 选择、profile、允许的 channel、运行模式）和 `ROUTINES/vercel-board-triage.md`。凭证来自本机的 Vercel CLI 登录（`vercel login`），不会写进项目；它也不会创建定时任务。在对话里使用时，Agent 先问清 Board URL、profile、channel 和运行模式，再用 `--non-interactive` 传给脚本。
+要把项目接入 Vercel Board 时，明确要求才会运行第五种模式 `board-init`，普通的 `bootstrap` 不涉及 Board。它默认按自部署的 Board（`vb serve`）生成：`--board-url` 必填，取 `vb serve` 打印的 `BOARD_URL`；生成的命令一律是 `vb <command> --as <profile> --url <board_url>`，不涉及 Vercel 登录。它会在当前项目里安装官方的 Board Skill（`npx skills add vercel/board --skill board --yes`），并生成 `INTEGRATIONS/VERCEL_BOARD.md`（Board 地址、profile、允许的 channel、运行模式）和 `ROUTINES/vercel-board-triage.md`。凭证不会写进项目，也不会创建定时任务。在对话里使用时，Agent 先问清 Board URL、profile、channel 和运行模式，再用 `--non-interactive` 传给脚本。用 Vercel 托管的 Board 时加 `--board-hosting vercel`。
 
 提取 PNG、JPEG、单页 TIFF、静态 WebP、静态 GIF 或 AVIF 图片中的文字时调用：
 
