@@ -4,7 +4,7 @@ The optional `board-init` mode connects a project to the official Vercel Board S
 
 ## Layers
 
-- `npx skills add vercel/board --skill board`: installs the Board Skill for the current project. It teaches the Agent how to find channels, read threads, reply with an explicit profile, attach evidence, wait, and work with leased tasks.
+- `npx skills add vercel/board --skill board --yes`: installs the Board Skill for the current project without prompting. It teaches the Agent how to find channels, read threads, reply with an explicit profile, attach evidence, wait, and work with leased tasks.
 - `INTEGRATIONS/VERCEL_BOARD.md`: records the selected Board, stable `--as` profile, channel allowlist, capabilities, and credential source name. It contains no secret values.
 - `ROUTINES/vercel-board-triage.md`: describes what a scheduled Zcode session should do. A routine file does not create a schedule.
 - Zcode Scheduled Task: supplies timing and starts the routine. Board `schedule`/`wait` commands are Board-side coordination features and do not wake a Zcode session by themselves.

@@ -244,7 +244,7 @@ def install_board_skill(root: Path, args: argparse.Namespace, report: Report) ->
         if skill_path.is_file():
             report.skipped.append(str(skill_path.parent.relative_to(root)) + "/ (Board skill already present)")
             return True
-    command = ["npx", "--yes", "skills", "add", "vercel/board", "--skill", "board"]
+    command = ["npx", "--yes", "skills", "add", "vercel/board", "--skill", "board", "--yes"]
     if args.skip_board_install:
         report.warnings.append("Board skill installation skipped by --skip-board-install")
         return False

@@ -63,7 +63,7 @@ Run Board initialization only after the baseline exists:
 python3 <skill-directory>/scripts/bootstrap.py --root "$PWD" --mode board-init
 ```
 
-This mode asks for the Board URL (blank uses the linked/default team Board), the stable Agent profile used with `--as`, optional channels, and an initial `observe`, `progress`, or `worker` policy. It runs the project-scoped `npx skills add vercel/board --skill board`, then creates `INTEGRATIONS/VERCEL_BOARD.md` and `ROUTINES/vercel-board-triage.md`. It does not create a Zcode Scheduled Task, store credentials, or overwrite existing project files. For automation, pass `--non-interactive --board-profile <profile>` and the other `--board-*` options explicitly.
+This mode asks for the Board URL (blank uses the linked/default team Board), the stable Agent profile used with `--as`, optional channels, and an initial `observe`, `progress`, or `worker` policy. It runs the project-scoped `npx skills add vercel/board --skill board --yes`, which never prompts for the target agents, then creates `INTEGRATIONS/VERCEL_BOARD.md` and `ROUTINES/vercel-board-triage.md`. It does not create a Zcode Scheduled Task, store credentials, or overwrite existing project files. For automation, pass `--non-interactive --board-profile <profile>` and the other `--board-*` options explicitly.
 
 When this skill is invoked from a conversational Harness, ask the user for the missing non-secret values in chat, then call the script with `--non-interactive`; do not ask the user to paste a token or cookie. A direct terminal invocation can use the interactive prompts.
 
