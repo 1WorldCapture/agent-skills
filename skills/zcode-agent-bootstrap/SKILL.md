@@ -55,6 +55,17 @@ Supported modes:
 - `repair`: create only missing baseline paths and preserve existing content.
 - `validate`: read only and report missing paths, unresolved placeholders, malformed metadata, and secret-like values.
 - `status`: read only and summarize the baseline, legacy paths, and bootstrap state.
+- `board-init`: opt in to the Vercel Board integration for this project. It never runs as part of `bootstrap`.
+
+Run Board initialization only after the baseline exists:
+
+```bash
+python3 <skill-directory>/scripts/bootstrap.py --root "$PWD" --mode board-init
+```
+
+This mode asks for the Board URL (blank uses the linked/default team Board), the stable Agent profile used with `--as`, optional channels, and an initial `observe`, `progress`, or `worker` policy. It runs the project-scoped `npx skills add vercel/board --skill board`, then creates `INTEGRATIONS/VERCEL_BOARD.md` and `ROUTINES/vercel-board-triage.md`. It does not create a Zcode Scheduled Task, store credentials, or overwrite existing project files. For automation, pass `--non-interactive --board-profile <profile>` and the other `--board-*` options explicitly.
+
+When this skill is invoked from a conversational Harness, ask the user for the missing non-secret values in chat, then call the script with `--non-interactive`; do not ask the user to paste a token or cookie. A direct terminal invocation can use the interactive prompts.
 
 Use `--dry-run` for a preview. Pass only facts supplied by the user or visible in the project:
 
@@ -81,8 +92,9 @@ If identity or mission details are missing, use conservative defaults and mark e
 5. **Customize deliberately.** Complete `SOUL.md`, `IDENTITY.md`, `USER.md`, `TOOLS.md`, `SECURITY.md`, and the mission section of `AGENTS.md` only after showing the generated placeholders. Preserve the portable file map and safety rules.
 6. **Use portable skills.** Put each reusable domain capability in `.agents/skills/<name>/SKILL.md`. Keep frontmatter to the common `name` and `description` fields. Put scripts, references, and assets beside that `SKILL.md`. Do not create a second root `SKILLS/` directory.
 7. **Define proactive work.** If the user supplies a recurring job, create a concrete `ROUTINES/<slug>.md` and append a concrete, placeholder-free task prompt to `ROUTINES/task-prompts.md`. Then create the actual Scheduled Task, loop, or workflow in the active Harness UI or CLI. Do not pretend that a routine file schedules itself.
-8. **Validate.** Run `validate` after customization. If an existing user-owned `AGENTS.md` conflicts with the generated portable protocol, do not overwrite it; show the missing rules and ask for a manual merge.
-9. **Report.** Return created, skipped, conflicts, warnings, and errors, followed by the platform-specific installation step for the active Harness.
+8. **Integrate Board only when requested.** Run `board-init` explicitly. Keep the vendor Board Skill under the project skill root and keep project-specific routing and policy in `INTEGRATIONS/VERCEL_BOARD.md`; do not put `BOARD_TOKEN`, cookies, OIDC tokens, or signed URLs in the project.
+9. **Validate.** Run `validate` after customization. If an existing user-owned `AGENTS.md` conflicts with the generated portable protocol, do not overwrite it; show the missing rules and ask for a manual merge.
+10. **Report.** Return created, skipped, conflicts, warnings, and errors, followed by the platform-specific installation step for the active Harness.
 
 ## Generated baseline
 
@@ -140,5 +152,6 @@ Follow the same contract manually: create the baseline layout, preserve existing
 
 ## Bundled resources
 
-- scripts/bootstrap.py: deterministic scaffold, repair, status, and validation implementation.
+- scripts/bootstrap.py: deterministic scaffold, repair, status, validation, and opt-in Board initialization implementation.
 - references/zcode-mapping.md: four-Harness path mapping and adapter boundaries.
+- references/vercel-board.md: Board integration boundary, credential rules, and routine model.
