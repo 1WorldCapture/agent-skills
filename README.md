@@ -14,7 +14,7 @@ This repository never distributes HeroUI Pro source code, credentials, or licens
 | `mission-crew` | Captain → PM 任务编排：对齐目标、写临时 OpenSpec BRIEF、在 worktree 中只拉起 PM，并由 PM 产出 proposal。 |
 | `pi-sdk` | 在 Pi Coding Agent SDK（`@earendil-works/pi-coding-agent`）上构建自定义 Agent 的参考：从跑通第一个会话，到定制行为、工具与运行时扩展。 |
 | `setup-heroui-pro` | Scaffold or upgrade HeroUI Pro Web, Native, and monorepo projects through a resumable workflow with credential preflight, stable/beta enforcement, atomic project-local Skill downloads, and redacted MCP verification. |
-| `zcode-agent-bootstrap` | 面向 ZCode 的 Agent 工作区脚手架：在项目根生成 `AGENTS.md`、`.agents/skills` 技能根、身份与行为文件、可审计记忆、routines、日志与 artifacts，生成的布局可移植到 Cursor、Codex、Antigravity；只补缺失文件，可幂等重跑并校验。 |
+| `zcode-agent-bootstrap` | 面向 ZCode 的 Agent 工作区脚手架：在项目根生成 `AGENTS.md`、`.agents/skills` 技能根、身份与行为文件、可审计记忆、routines、日志与 artifacts，生成的布局可移植到 Cursor、Codex、Antigravity；只补缺失文件，可幂等重跑并校验。另含可选的 `board-init` 模式，在明确要求时把项目接入 Vercel Board。 |
 
 ## Install
 
@@ -182,7 +182,9 @@ $pi-sdk
 $zcode-agent-bootstrap
 ```
 
-技能运行包内的 `scripts/bootstrap.py`，提供 `bootstrap`、`repair`、`validate`、`status` 四种模式和 `--dry-run` 预览。它只创建缺失的路径，不覆盖已有的 `AGENTS.md`、身份文件、记忆与 routines；定制完成后用 `validate` 做一次只读检查。
+技能运行包内的 `scripts/bootstrap.py`，提供 `bootstrap`、`repair`、`validate`、`status` 四种基础模式和 `--dry-run` 预览。它只创建缺失的路径，不覆盖已有的 `AGENTS.md`、身份文件、记忆与 routines；定制完成后用 `validate` 做一次只读检查。
+
+要把项目接入 Vercel Board 时，明确要求才会运行第五种模式 `board-init`，普通的 `bootstrap` 不涉及 Board。它会在当前项目里安装官方的 Board Skill（`npx skills add vercel/board --skill board --yes`），并生成 `INTEGRATIONS/VERCEL_BOARD.md`（Board 选择、profile、允许的 channel、运行模式）和 `ROUTINES/vercel-board-triage.md`。凭证来自本机的 Vercel CLI 登录（`vercel login`），不会写进项目；它也不会创建定时任务。在对话里使用时，Agent 先问清 Board URL、profile、channel 和运行模式，再用 `--non-interactive` 传给脚本。
 
 提取 PNG、JPEG、单页 TIFF、静态 WebP、静态 GIF 或 AVIF 图片中的文字时调用：
 
