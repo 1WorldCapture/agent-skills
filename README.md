@@ -8,7 +8,7 @@ This repository never distributes HeroUI Pro source code, credentials, or licens
 
 | Skill | Purpose |
 | --- | --- |
-| `agent-workspace-bootstrap` | 跨 Harness 的 Agent 工作区脚手架：在项目根生成 `AGENTS.md`、`.agents/skills` 技能根、身份与行为文件、可审计记忆、routines、日志与 artifacts，并支持通过 `--harness cursor` / `--harness zcode` 按需生成平台适配层；只补缺失文件，可幂等重跑并校验。另含可选的 `board-init` 模式，在明确要求时把项目接入 Vercel Board。 |
+| `agent-workspace-bootstrap` | 跨 Harness 的 Agent 工作区脚手架：默认以当前工作目录为 Agent Home，先运行交互式 Bootstrap Wizard 收集必填身份信息，再生成 `AGENTS.md`、`.agents/skills` 技能根、身份与行为文件、可审计记忆、routines、日志与 artifacts；支持通过 `--harness cursor` / `--harness zcode` 按需生成平台适配层，只补缺失文件，可幂等重跑并校验。另含可选的 `board-init` 模式，直接使用 Vercel Board 原生权限。 |
 | `agents-md` | 按原则与松散骨架创建或维护项目根目录的英文 `AGENTS.md`（含一周新鲜度与 handcraft 只读保留）。 |
 | `freetalk` | 通过简短自然的自由对话梳理模糊想法，并把关键观点持续沉淀到 `docs/freetalk.md`。 |
 | `light-ocr-text-extraction` | 使用 light-ocr 离线提取图片文字、置信度与坐标，并自动解码 TIFF 等格式。 |
@@ -215,9 +215,9 @@ $pi-sdk
 $agent-workspace-bootstrap
 ```
 
-技能运行包内的 `scripts/bootstrap.py`，提供 `bootstrap`、`repair`、`validate`、`status` 四种基础模式和 `--dry-run` 预览。默认生成跨 Harness 的干净基线（`--harness portable`），也可按需加 `--harness cursor`（生成 `.cursor/rules/agent-workspace.mdc` 引导规则和 `.cursor/skills/`）或 `--harness zcode`（或逗号组合 `--harness cursor,zcode`）。它只创建缺失的路径，不覆盖已有的 `AGENTS.md`、身份文件、记忆与 routines；定制完成后用 `validate` 做一次只读检查。
+技能运行包内的 `scripts/bootstrap.py`，提供 `bootstrap`、`repair`、`validate`、`status` 四种基础模式和 `--dry-run` 预览。`bootstrap` 默认启动交互式向导，以当前工作目录为 Agent Home；只有完成必填身份信息并确认后才会写入文件。默认生成跨 Harness 的干净基线（`--harness portable`），也可按需加 `--harness cursor`（生成 `.cursor/rules/agent-workspace.mdc` 引导规则和 `.cursor/skills/`）或 `--harness zcode`（或逗号组合 `--harness cursor,zcode`）。它只创建缺失的路径，不覆盖已有的 `AGENTS.md`、身份文件、记忆与 routines；定制完成后用 `validate` 做一次只读检查。自动化调用必须显式传 `--non-interactive` 和全部必填字段。
 
-要把项目接入 Vercel Board 时，明确要求才会运行第五种模式 `board-init`，普通的 `bootstrap` 不涉及 Board。它默认按自部署的 Board（`vb serve`）生成：`--board-url` 必填，取 `vb serve` 打印的 `BOARD_URL`；生成的命令一律是 `vb <command> --as <profile> --url <board_url>`，不涉及 Vercel 登录。它会在当前项目里安装官方的 Board Skill（`npx skills add vercel/board --skill board --yes`），并生成 `INTEGRATIONS/VERCEL_BOARD.md`（Board 地址、profile、允许的 channel、运行模式）和 `ROUTINES/vercel-board-triage.md`。凭证不会写进项目，也不会创建定时任务。在对话里使用时，Agent 先问清 Board URL、profile、channel 和运行模式，再用 `--non-interactive` 传给脚本。用 Vercel 托管的 Board 时加 `--board-hosting vercel`。
+要把项目接入 Vercel Board 时，明确要求才会运行第五种模式 `board-init`，普通的 `bootstrap` 不涉及 Board。它默认按自部署的 Board（`vb serve`）生成：`--board-url` 必填，取 `vb serve` 打印的 `BOARD_URL`；生成的命令一律是 `vb <command> --as <profile> --url <board_url>`，不涉及 Vercel 登录。它会在当前项目里安装官方的 Board Skill（`npx skills add vercel/board --skill board --yes`），并生成 `INTEGRATIONS/VERCEL_BOARD.md`（Board 地址、profile、允许的 channel、原生权限边界）和 `ROUTINES/vercel-board-triage.md`。凭证不会写进项目，也不会创建定时任务。Board 的实际权限由 Board 原生 grants 决定，不再选择 Observe、Progress、Worker 等本地策略。在对话里使用时，Agent 先问清 Board URL、profile、channel，再用 `--non-interactive` 传给脚本。用 Vercel 托管的 Board 时加 `--board-hosting vercel`。
 
 提取 PNG、JPEG、单页 TIFF、静态 WebP、静态 GIF 或 AVIF 图片中的文字时调用：
 

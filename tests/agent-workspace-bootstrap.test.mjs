@@ -18,10 +18,11 @@ import {fileURLToPath} from "node:url";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const script = resolve(repoRoot, "skills/agent-workspace-bootstrap/scripts/bootstrap.py");
 
-function runBootstrap(cwd, args) {
+function runBootstrap(cwd, args, input = undefined) {
   const result = spawnSync("python3", [script, "--root", ".", "--json", ...args], {
     cwd,
     encoding: "utf8",
+    input,
   });
   let payload = null;
   try {
@@ -32,6 +33,15 @@ function runBootstrap(cwd, args) {
     });
   }
   return {status: result.status, payload, stderr: result.stderr};
+}
+
+function completeBootstrapArgs(harness = "portable") {
+  return [
+    "--mode", "bootstrap", "--non-interactive", "--harness", harness,
+    "--agent-id", "demo-agent", "--name", "Demo Agent",
+    "--role", "Project maintainer", "--mission", "Ship cleanly",
+    "--language", "en-US", "--timezone", "UTC",
+  ];
 }
 
 function withTempProject(fn) {
@@ -46,7 +56,7 @@ function withTempProject(fn) {
 
 // 1. Portable baseline: bootstrap, validate, status, idempotent re-run
 withTempProject((dir) => {
-  const boot = runBootstrap(dir, ["--mode", "bootstrap", "--name", "Demo Agent", "--mission", "Ship cleanly"]);
+  const boot = runBootstrap(dir, completeBootstrapArgs());
   assert.equal(boot.status, 0);
   assert.equal(boot.payload.errors.length, 0);
   assert.ok(existsSync(join(dir, "AGENTS.md")));
@@ -68,7 +78,7 @@ withTempProject((dir) => {
   assert.ok(st.payload.skipped.includes("bootstrap state present"));
   assert.ok(!st.payload.warnings.includes("bootstrap state present"));
 
-  const rerun = runBootstrap(dir, ["--mode", "bootstrap"]);
+  const rerun = runBootstrap(dir, completeBootstrapArgs());
   assert.equal(rerun.status, 0);
   assert.equal(rerun.payload.created.length, 0);
   assert.equal(rerun.payload.conflicts.length, 0);
@@ -76,7 +86,7 @@ withTempProject((dir) => {
 
 // 2. Cursor adapter creation, validation, status, and user conflict preservation
 withTempProject((dir) => {
-  const boot = runBootstrap(dir, ["--mode", "bootstrap", "--harness", "cursor"]);
+  const boot = runBootstrap(dir, completeBootstrapArgs("cursor"));
   assert.equal(boot.status, 0);
   assert.equal(boot.payload.errors.length, 0);
   assert.ok(existsSync(join(dir, ".cursor/rules/agent-workspace.mdc")));
@@ -95,7 +105,7 @@ withTempProject((dir) => {
   assert.ok(st.payload.skipped.includes("Cursor adapter present"));
 
   writeFileSync(join(dir, ".cursor/rules/agent-workspace.mdc"), "# Custom rule without frontmatter\n", "utf8");
-  const repair = runBootstrap(dir, ["--mode", "repair", "--harness", "cursor"]);
+  const repair = runBootstrap(dir, ["--mode", "repair", "--non-interactive", "--harness", "cursor"]);
   assert.equal(repair.status, 0);
   assert.ok(repair.payload.conflicts.some((c) => c.includes(".cursor/rules/agent-workspace.mdc")));
   assert.equal(
@@ -115,7 +125,7 @@ withTempProject((dir) => {
   assert.equal(bad.status, 1);
   assert.ok(bad.payload.errors.some((e) => e.includes("unsupported --harness")));
 
-  const boot = runBootstrap(dir, ["--mode", "bootstrap", "--harness", "cursor,zcode"]);
+  const boot = runBootstrap(dir, completeBootstrapArgs("cursor,zcode"));
   assert.equal(boot.status, 0);
   assert.ok(existsSync(join(dir, ".cursor/rules/agent-workspace.mdc")));
   assert.ok(existsSync(join(dir, ".cursor/skills/README.md")));
@@ -129,7 +139,7 @@ withTempProject((dir) => {
 
 // 4. Legacy zcode-agent-bootstrap marker compatibility on repair
 withTempProject((dir) => {
-  const boot = runBootstrap(dir, ["--mode", "bootstrap"]);
+  const boot = runBootstrap(dir, completeBootstrapArgs());
   assert.equal(boot.status, 0);
 
   const agentsPath = join(dir, "AGENTS.md");
@@ -146,7 +156,7 @@ withTempProject((dir) => {
   );
   writeFileSync(promptsPath, oldPrompts, "utf8");
 
-  const repair = runBootstrap(dir, ["--mode", "repair"]);
+  const repair = runBootstrap(dir, ["--mode", "repair", "--non-interactive"]);
   assert.equal(repair.status, 0);
   assert.equal(repair.payload.conflicts.length, 0);
   assert.ok(repair.payload.skipped.some((s) => s.startsWith("AGENTS.md (managed file exists")));
@@ -154,7 +164,7 @@ withTempProject((dir) => {
 
 // 5. board-init mirroring into .cursor/skills/board and .zcode/skills/board + validate
 withTempProject((dir) => {
-  const boot = runBootstrap(dir, ["--mode", "bootstrap", "--harness", "cursor,zcode"]);
+  const boot = runBootstrap(dir, completeBootstrapArgs("cursor,zcode"));
   assert.equal(boot.status, 0);
 
   const boardSkillDir = join(dir, ".agents/skills/board");
@@ -169,7 +179,6 @@ withTempProject((dir) => {
     "--board-url", "http://127.0.0.1:4100/api/board",
     "--board-profile", "worker-1",
     "--board-channels", "general,dev",
-    "--board-mode", "observe",
   ]);
   assert.equal(boardInit.status, 0);
   assert.equal(boardInit.payload.errors.length, 0);
@@ -180,6 +189,10 @@ withTempProject((dir) => {
 
   const routine = readFileSync(join(dir, "ROUTINES/vercel-board-triage.md"), "utf8");
   assert.match(routine, /Cursor Automation/);
+  const integration = readFileSync(join(dir, "INTEGRATIONS/VERCEL_BOARD.md"), "utf8");
+  assert.doesNotMatch(integration, /^mode:|^capabilities:|`(observe|progress|worker)`/im);
+  assert.match(integration, /native grants/i);
+  assert.doesNotMatch(routine, /^mode:|^capabilities:|`(observe|progress|worker)`/im);
 
   const val = runBootstrap(dir, ["--mode", "validate", "--harness", "cursor,zcode"]);
   assert.equal(val.status, 0);
@@ -188,7 +201,7 @@ withTempProject((dir) => {
 
 // 6. Secret pattern detection in USER.md and .cursor/rules/agent-workspace.mdc
 withTempProject((dir) => {
-  const boot = runBootstrap(dir, ["--mode", "bootstrap", "--harness", "cursor"]);
+  const boot = runBootstrap(dir, completeBootstrapArgs("cursor"));
   assert.equal(boot.status, 0);
 
   writeFileSync(join(dir, "USER.md"), "# USER.md\n\napi_key: supersecretvalue12345\n", "utf8");
@@ -199,6 +212,69 @@ withTempProject((dir) => {
   assert.equal(val.status, 1);
   assert.ok(val.payload.errors.some((e) => e.includes("USER.md")));
   assert.ok(val.payload.errors.some((e) => e.includes(".cursor/rules/agent-workspace.mdc")));
+});
+
+// 7. Bootstrap Wizard collects mandatory values, confirms once, and writes only after confirmation
+withTempProject((dir) => {
+  const input = [
+    "cursor\n",
+    "interactive-agent\n",
+    "Interactive Agent\n",
+    "Project reviewer\n",
+    "Review project changes safely\n",
+    "en-US\n",
+    "UTC\n",
+    "\n",
+    "\n",
+    "\n",
+    "yes\n",
+  ].join("");
+  const boot = runBootstrap(dir, ["--mode", "bootstrap"], input);
+  assert.equal(boot.status, 0);
+  assert.equal(boot.payload.errors.length, 0);
+  const agents = readFileSync(join(dir, "AGENTS.md"), "utf8");
+  assert.match(agents, /Agent ID: interactive-agent/);
+  assert.match(agents, /Mission: Review project changes safely/);
+  assert.doesNotMatch(agents, /TODO/);
+  assert.ok(existsSync(join(dir, ".agents/bootstrap-state.yaml")));
+  assert.ok(existsSync(join(dir, ".cursor/rules/agent-workspace.mdc")));
+});
+
+// 8. Declining the final confirmation leaves the project untouched
+withTempProject((dir) => {
+  const input = [
+    "portable\n", "cancel-agent\n", "Cancel Agent\n", "Reviewer\n",
+    "Do not create this workspace\n", "en-US\n", "UTC\n", "\n", "\n", "\n", "no\n",
+  ].join("");
+  const cancelled = runBootstrap(dir, ["--mode", "bootstrap"], input);
+  assert.equal(cancelled.status, 0);
+  assert.ok(cancelled.payload.warnings.some((w) => w.includes("cancelled")));
+  assert.equal(existsSync(join(dir, "AGENTS.md")), false);
+  assert.equal(existsSync(join(dir, ".agents")), false);
+});
+
+// 9. Non-interactive bootstrap rejects missing mandatory values before creating anything
+withTempProject((dir) => {
+  const missing = runBootstrap(dir, ["--mode", "bootstrap", "--non-interactive"]);
+  assert.equal(missing.status, 1);
+  assert.ok(missing.payload.errors.some((e) => e.includes("mandatory values")));
+  assert.equal(existsSync(join(dir, "AGENTS.md")), false);
+  assert.equal(existsSync(join(dir, ".agents")), false);
+});
+
+// 10. The current working directory is the default root and explicit other roots are rejected
+withTempProject((dir) => {
+  const boot = runBootstrap(dir, completeBootstrapArgs());
+  assert.equal(boot.status, 0);
+  const outside = join(tmpdir(), "awb-outside");
+  mkdirSync(outside, {recursive: true});
+  try {
+    const rejected = runBootstrap(dir, [...completeBootstrapArgs(), "--root", outside]);
+    assert.equal(rejected.status, 1);
+    assert.ok(rejected.payload.errors.some((e) => e.includes("root must equal the current working directory")));
+  } finally {
+    rmSync(outside, {recursive: true, force: true});
+  }
 });
 
 console.log("agent-workspace-bootstrap 脚手架、适配器、board-init 与安全校验测试通过。");
