@@ -142,6 +142,7 @@ def suggested_timezone() -> str:
 
 def require_non_interactive_bootstrap_values(args: argparse.Namespace, report: Report) -> None:
     required = {
+        "--harness": args.harness,
         "--agent-id": args.agent_id,
         "--name": args.name,
         "--role": args.role,
@@ -894,7 +895,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Scaffold and validate a cross-Harness Agent Project.")
     parser.add_argument("--root", default=".")
     parser.add_argument("--mode", choices=("bootstrap", "repair", "validate", "status", "board-init"), default="bootstrap")
-    parser.add_argument("--harness", default="portable", help="Harness adapters to scaffold or validate: portable (default) or comma-separated adapters (cursor, zcode)")
+    parser.add_argument("--harness", help="Harness adapters to scaffold or validate: portable or comma-separated adapters (cursor, zcode)")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--agent-id")
