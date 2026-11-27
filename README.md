@@ -8,13 +8,13 @@ This repository never distributes HeroUI Pro source code, credentials, or licens
 
 | Skill | Purpose |
 | --- | --- |
+| `agent-workspace-bootstrap` | 跨 Harness 的 Agent 工作区脚手架：在项目根生成 `AGENTS.md`、`.agents/skills` 技能根、身份与行为文件、可审计记忆、routines、日志与 artifacts，并支持通过 `--harness cursor` / `--harness zcode` 按需生成平台适配层；只补缺失文件，可幂等重跑并校验。另含可选的 `board-init` 模式，在明确要求时把项目接入 Vercel Board。 |
 | `agents-md` | 按原则与松散骨架创建或维护项目根目录的英文 `AGENTS.md`（含一周新鲜度与 handcraft 只读保留）。 |
 | `freetalk` | 通过简短自然的自由对话梳理模糊想法，并把关键观点持续沉淀到 `docs/freetalk.md`。 |
 | `light-ocr-text-extraction` | 使用 light-ocr 离线提取图片文字、置信度与坐标，并自动解码 TIFF 等格式。 |
 | `mission-crew` | Captain → PM 任务编排：对齐目标、写临时 OpenSpec BRIEF、在 worktree 中只拉起 PM，并由 PM 产出 proposal。 |
 | `pi-sdk` | 在 Pi Coding Agent SDK（`@earendil-works/pi-coding-agent`）上构建自定义 Agent 的参考：从跑通第一个会话，到定制行为、工具与运行时扩展。 |
 | `setup-heroui-pro` | Scaffold or upgrade HeroUI Pro Web, Native, and monorepo projects through a resumable workflow with credential preflight, stable/beta enforcement, atomic project-local Skill downloads, and redacted MCP verification. |
-| `zcode-agent-bootstrap` | 面向 ZCode 的 Agent 工作区脚手架：在项目根生成 `AGENTS.md`、`.agents/skills` 技能根、身份与行为文件、可审计记忆、routines、日志与 artifacts，生成的布局可移植到 Cursor、Codex、Antigravity；只补缺失文件，可幂等重跑并校验。另含可选的 `board-init` 模式，在明确要求时把项目接入 Vercel Board。 |
 
 ## Install
 
@@ -24,7 +24,7 @@ List available skills:
 npx skills add 1WorldCapture/agent-skills --list
 ```
 
-The `skills` CLI installs one copy into the cross-agent directory: `.agents/skills/<name>` for a project, `~/.agents/skills/<name>` with `--global`. Every agent that follows the `.agents` convention reads that same copy, so the commands below pass no `--agent` flags. Use `--agent <name>` only to also place agent-specific copies or symlinks under directories such as `.claude/skills/`. The one exception is `zcode-agent-bootstrap`, which targets ZCode: its commands pass `--agent zcode` so the CLI copies the Skill into ZCode's own `.zcode/skills/` instead.
+The `skills` CLI installs one copy into the cross-agent directory: `.agents/skills/<name>` for a project, `~/.agents/skills/<name>` with `--global`. Every agent that follows the `.agents` convention reads that same copy, so the commands below pass no `--agent` flags. Use `--agent <name>` only to also place agent-specific copies or symlinks under directories such as `.claude/skills/`. For `agent-workspace-bootstrap`, the Cursor and ZCode instructions below show how to install directly into `~/.cursor/skills/` or `~/.zcode/skills/` without writing into `~/.agents/skills/`.
 
 Install `setup-heroui-pro` into the current project:
 
@@ -113,22 +113,55 @@ npx skills add 1WorldCapture/agent-skills \
 
 Pi 从 `~/.agents/skills/` 和项目下受信任的 `.agents/skills/` 发现技能，所以不需要再往 `~/.pi/agent/skills/` 或 `.pi/skills/` 额外拷贝一份，也不需要 `pi --skill <path>`。
 
-安装 Agent 工作区脚手架。它面向 ZCode，所以安装命令要带 `--agent zcode`：`skills` CLI 会把技能直接复制到 ZCode 自己的 `~/.zcode/skills/zcode-agent-bootstrap/`，而不是 `~/.agents/skills/`：
+安装跨 Harness 的 Agent 工作区脚手架（`agent-workspace-bootstrap`）：
+
+- **Cursor（安装到自定义 `~/.cursor/skills/` 或项目 `.cursor/skills/`，不写入 `~/.agents/skills/`）**：`npx skills` CLI 将 Cursor 归类为 universal agent，即使加 `--agent cursor --copy` 仍会写入 `~/.agents/skills/`。若希望只落在 Cursor 自己的技能目录：
 
 ```bash
+# 全局安装到 ~/.cursor/skills/agent-workspace-bootstrap/
+rm -rf ~/.cursor/skills/agent-workspace-bootstrap && \
+mkdir -p ~/.cursor/skills/agent-workspace-bootstrap && \
+curl -fsSL https://github.com/1WorldCapture/agent-skills/archive/refs/heads/main.tar.gz | \
+  tar -xz --strip-components=3 -C ~/.cursor/skills/agent-workspace-bootstrap \
+  agent-skills-main/skills/agent-workspace-bootstrap
+```
+
+项目级安装到 `<project>/.cursor/skills/agent-workspace-bootstrap/`：
+
+```bash
+rm -rf .cursor/skills/agent-workspace-bootstrap && \
+mkdir -p .cursor/skills/agent-workspace-bootstrap && \
+curl -fsSL https://github.com/1WorldCapture/agent-skills/archive/refs/heads/main.tar.gz | \
+  tar -xz --strip-components=3 -C .cursor/skills/agent-workspace-bootstrap \
+  agent-skills-main/skills/agent-workspace-bootstrap
+```
+
+- **ZCode（安装到 `~/.zcode/skills/` 或项目 `.zcode/skills/`，不写入 `~/.agents/skills/`）**：带上 `--agent zcode --copy --yes`：
+
+```bash
+# 全局安装到 ~/.zcode/skills/agent-workspace-bootstrap/
 npx skills add 1WorldCapture/agent-skills \
-  --skill zcode-agent-bootstrap \
+  --skill agent-workspace-bootstrap \
   --global \
   --agent zcode \
+  --copy \
   --yes
 ```
 
-也可以项目级安装，落在 `<project>/.zcode/skills/zcode-agent-bootstrap/`：
+```bash
+# 项目级安装到 <project>/.zcode/skills/agent-workspace-bootstrap/
+npx skills add 1WorldCapture/agent-skills \
+  --skill agent-workspace-bootstrap \
+  --agent zcode \
+  --copy \
+  --yes
+```
+
+- **其他通用 Agent（Codex、Antigravity 等）**：
 
 ```bash
 npx skills add 1WorldCapture/agent-skills \
-  --skill zcode-agent-bootstrap \
-  --agent zcode \
+  --skill agent-workspace-bootstrap \
   --yes
 ```
 
@@ -179,10 +212,10 @@ $pi-sdk
 想为一个新项目（或已有项目）搭一套可移植的 Agent 工作区时调用：
 
 ```text
-$zcode-agent-bootstrap
+$agent-workspace-bootstrap
 ```
 
-技能运行包内的 `scripts/bootstrap.py`，提供 `bootstrap`、`repair`、`validate`、`status` 四种基础模式和 `--dry-run` 预览。它只创建缺失的路径，不覆盖已有的 `AGENTS.md`、身份文件、记忆与 routines；定制完成后用 `validate` 做一次只读检查。
+技能运行包内的 `scripts/bootstrap.py`，提供 `bootstrap`、`repair`、`validate`、`status` 四种基础模式和 `--dry-run` 预览。默认生成跨 Harness 的干净基线（`--harness portable`），也可按需加 `--harness cursor`（生成 `.cursor/rules/agent-workspace.mdc` 引导规则和 `.cursor/skills/`）或 `--harness zcode`（或逗号组合 `--harness cursor,zcode`）。它只创建缺失的路径，不覆盖已有的 `AGENTS.md`、身份文件、记忆与 routines；定制完成后用 `validate` 做一次只读检查。
 
 要把项目接入 Vercel Board 时，明确要求才会运行第五种模式 `board-init`，普通的 `bootstrap` 不涉及 Board。它默认按自部署的 Board（`vb serve`）生成：`--board-url` 必填，取 `vb serve` 打印的 `BOARD_URL`；生成的命令一律是 `vb <command> --as <profile> --url <board_url>`，不涉及 Vercel 登录。它会在当前项目里安装官方的 Board Skill（`npx skills add vercel/board --skill board --yes`），并生成 `INTEGRATIONS/VERCEL_BOARD.md`（Board 地址、profile、允许的 channel、运行模式）和 `ROUTINES/vercel-board-triage.md`。凭证不会写进项目，也不会创建定时任务。在对话里使用时，Agent 先问清 Board URL、profile、channel 和运行模式，再用 `--non-interactive` 传给脚本。用 Vercel 托管的 Board 时加 `--board-hosting vercel`。
 

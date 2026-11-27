@@ -1,0 +1,16 @@
+interface:
+  display_name: Agent Workspace Bootstrap
+  short_description: Scaffold a portable Agent workspace
+  default_prompt: Use $agent-workspace-bootstrap to initialize this project with a portable
+    AGENTS.md and .agents/skills workspace (add --harness cursor or zcode for Harness-specific
+    adapters). Run the opt-in board-init mode only when the user asks to connect this project
+    to Vercel Board.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
